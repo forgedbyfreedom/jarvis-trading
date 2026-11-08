@@ -6,3 +6,5 @@ __pycache__/
 credentials*
 data/*.bak
 *.log
+data/server*.log
+data/*.tmp

@@ -13,7 +13,8 @@ from config import (
     YAHOO_TICKERS, CRYPTO_TICKERS, SCAN_INTERVAL_SEC,
     TARGET_CHECK_SEC, QUICK_LINKS, SEARCH, DATA_DIR, WATCHLIST_FILE,
     MIN_CONFIDENCE,
-    AUTO_TRADE_ENABLED, PAPER_TRADING,
+    AUTO_TRADE_ENABLED, PAPER_TRADING, TRADING_MODE,
+    PM_SIM_ENABLED, COPY_SIM_ENABLED,
 )
 import data_sources as ds
 from signal_engine import analyze, Recommendation, Action
@@ -28,6 +29,10 @@ from backtester import run_backtest
 import auto_trader as at
 import risk_manager as rm
 import advisory as adv
+import fees
+import sim_account
+import pm_sim
+import copy_sim
 
 logging.basicConfig(level=logging.INFO,
                     format="%(name)s | %(levelname)s | %(message)s")
@@ -108,10 +113,15 @@ def startup():
     t = threading.Thread(target=_background_scan_loop, daemon=True)
     t.start()
     pt.start_target_checker(TARGET_CHECK_SEC)
+    sim_account.load()
     if AUTO_TRADE_ENABLED:
         at.start_engine()
-    log.info("Jarvis Command Center v3 online. Auto-trade: " +
-             ("ON (PAPER)" if PAPER_TRADING else "ON (LIVE)" if AUTO_TRADE_ENABLED else "OFF"))
+    if PM_SIM_ENABLED:
+        pm_sim.start()
+    if COPY_SIM_ENABLED:
+        copy_sim.start()
+    log.info("Jarvis Command Center v4 online. Auto-trade: " +
+             ("ON (DRY RUN)" if PAPER_TRADING else "ON (LIVE)" if AUTO_TRADE_ENABLED else "OFF"))
 
 # ── PAGES ──
 @app.get("/", response_class=HTMLResponse)
@@ -255,6 +265,7 @@ def api_at_status():
         "running":      at.is_running(),
         "paused":       at.is_paused(),
         "paper_mode":   PAPER_TRADING,
+        "trading_mode": TRADING_MODE,
         "open_positions": len(rm.get_open_positions()),
         "daily_pnl":    round(rm.get_daily_pnl(), 2),
         "win_stats":    rm.get_win_rate(),
@@ -381,3 +392,48 @@ def api_chat_health():
     """Check ChromaDB + Ollama status."""
     return rag_chat.health_check()
 
+
+
+# ═══════════════════════════════════════════
+#  DRY RUN: fees, simulated accounts, panels
+# ═══════════════════════════════════════════
+@app.get("/api/fees")
+def api_fees():
+    return fees.schedule()
+
+@app.get("/api/sim/summary")
+def api_sim_summary():
+    return sim_account.summary(rm.get_open_positions())
+
+@app.get("/api/sim/legacy")
+def api_sim_legacy():
+    return sim_account.rescore_legacy() or {}
+
+@app.post("/api/sim/reset")
+def api_sim_reset():
+    """Start a fresh dry run. Old history is archived to data/archive, not deleted."""
+    sim_account.start_fresh(archive_old=True)
+    return sim_account.summary([])
+
+@app.get("/api/pm/summary")
+def api_pm_summary():
+    return pm_sim.summary()
+
+@app.post("/api/pm/reset")
+def api_pm_reset():
+    pm_sim.reset()
+    return {"status": "reset"}
+
+@app.get("/api/copy/summary")
+def api_copy_summary():
+    return copy_sim.summary()
+
+@app.post("/api/copy/run")
+def api_copy_run():
+    threading.Thread(target=copy_sim.run_cycle, daemon=True).start()
+    return {"status": "started"}
+
+@app.post("/api/copy/reset")
+def api_copy_reset():
+    copy_sim.reset()
+    return {"status": "reset"}

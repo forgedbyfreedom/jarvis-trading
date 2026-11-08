@@ -1,0 +1,236 @@
+{
+ "started_at": "2026-11-08T14:00:19+00:00",
+ "starting_capital": 10000.0,
+ "cash": 9986.70536320295,
+ "positions": {
+  "AERO": {
+   "szi": -802.0,
+   "entry": 0.5913375455000001
+  },
+  "BTC": {
+   "szi": -0.13831,
+   "entry": 75894.72475
+  },
+  "ETH": {
+   "szi": -2.7392,
+   "entry": 2235.179245
+  },
+  "HYPE": {
+   "szi": -46.1,
+   "entry": 77.41026995
+  },
+  "ZEC": {
+   "szi": 3.44,
+   "entry": 1268.430415
+  },
+  "ZRO": {
+   "szi": 259.6,
+   "entry": 1.5943781700000001
+  },
+  "kPEPE": {
+   "szi": 832029.0,
+   "entry": 0.005036510500000001
+  }
+ },
+ "costs": {
+  "trading_fee": 13.33363163381955,
+  "slippage": 8.890141074,
+  "funding": -0.03899483676901666
+ },
+ "realized_gross": 0.0,
+ "trades": [
+  {
+   "coin": "kPEPE",
+   "side": "BUY",
+   "sz": 832029.0,
+   "px": 0.005037,
+   "fee": 1.8857,
+   "realized": 0.0,
+   "t": "11-08 14:00"
+  },
+  {
+   "coin": "ZRO",
+   "side": "BUY",
+   "sz": 259.6,
+   "px": 1.594378,
+   "fee": 0.1863,
+   "realized": 0.0,
+   "t": "11-08 14:00"
+  },
+  {
+   "coin": "ZEC",
+   "side": "BUY",
+   "sz": 3.44,
+   "px": 1268.430415,
+   "fee": 1.9635,
+   "realized": 0.0,
+   "t": "11-08 14:00"
+  },
+  {
+   "coin": "HYPE",
+   "side": "SELL",
+   "sz": 46.1,
+   "px": 77.41027,
+   "fee": 1.6059,
+   "realized": 0.0,
+   "t": "11-08 14:00"
+  },
+  {
+   "coin": "ETH",
+   "side": "SELL",
+   "sz": 2.7392,
+   "px": 2235.179245,
+   "fee": 2.7552,
+   "realized": 0.0,
+   "t": "11-08 14:00"
+  },
+  {
+   "coin": "BTC",
+   "side": "SELL",
+   "sz": 0.13831,
+   "px": 75894.72475,
+   "fee": 4.7236,
+   "realized": 0.0,
+   "t": "11-08 14:00"
+  },
+  {
+   "coin": "AERO",
+   "side": "SELL",
+   "sz": 802.0,
+   "px": 0.591338,
+   "fee": 0.2134,
+   "realized": 0.0,
+   "t": "11-08 14:00"
+  }
+ ],
+ "hl": {
+  "selection": {
+   "ranked_at": "2026-11-08T14:00:33.541366+00:00",
+   "wallets": [
+    {
+     "address": "0x8455193b0490ad091819000b01cd9bb833ac974b",
+     "roi": 2.6074,
+     "alltime_roi": 0.3368,
+     "perp_account_value": 1110328.28,
+     "name": null,
+     "reason": "month ROI rank"
+    },
+    {
+     "address": "0xda26ab2a88881523ce002477fdee2f4ac9eb572a",
+     "roi": 1.9234,
+     "alltime_roi": 1.9234,
+     "perp_account_value": 562341.02,
+     "name": null,
+     "reason": "month ROI rank"
+    },
+    {
+     "address": "0xd09dfae7d956e672f669f83163d89c334aa50044",
+     "roi": 1.6307,
+     "alltime_roi": 1.6307,
+     "perp_account_value": 321553.24,
+     "name": null,
+     "reason": "month ROI rank"
+    },
+    {
+     "address": "0x4b67337795c5e1ca1aaea307f57b79419c632c88",
+     "roi": 1.354,
+     "alltime_roi": 4.3996,
+     "perp_account_value": 987468.57,
+     "name": null,
+     "reason": "month ROI rank"
+    },
+    {
+     "address": "0xed48b856556a69c7c40229c9c4c829b909257c9b",
+     "roi": 1.3485,
+     "alltime_roi": 1.6045,
+     "perp_account_value": 547653.01,
+     "name": null,
+     "reason": "month ROI rank"
+    }
+   ]
+  }
+ },
+ "last_funding_ts": 1794147165.165109,
+ "day": {
+  "date": "2026-11-08",
+  "start_equity": 10000.0,
+  "halted": false
+ },
+ "equity_curve": [
+  [
+   "11-08 14:00",
+   9977.78
+  ],
+  [
+   "11-08 14:01",
+   9986.7
+  ],
+  [
+   "11-08 14:04",
+   9987.88
+  ],
+  [
+   "11-08 14:06",
+   9977.12
+  ],
+  [
+   "11-08 14:08",
+   9981.2
+  ],
+  [
+   "11-08 14:12",
+   9963.07
+  ]
+ ],
+ "last_marks": {
+  "AERO": 0.592225,
+  "BTC": 75946.5,
+  "ETH": 2237.95,
+  "HYPE": 77.4015,
+  "ZEC": 1269.95,
+  "ZRO": 1.5877,
+  "kPEPE": 0.005022
+ },
+ "wallets": [
+  {
+   "address": "0x8455193b0490ad091819000b01cd9bb833ac974b",
+   "roi": 2.6074,
+   "alltime_roi": 0.3368,
+   "perp_account_value": 1110328.28,
+   "name": null,
+   "reason": "month ROI rank"
+  },
+  {
+   "address": "0xda26ab2a88881523ce002477fdee2f4ac9eb572a",
+   "roi": 1.9234,
+   "alltime_roi": 1.9234,
+   "perp_account_value": 562341.02,
+   "name": null,
+   "reason": "month ROI rank"
+  },
+  {
+   "address": "0xd09dfae7d956e672f669f83163d89c334aa50044",
+   "roi": 1.6307,
+   "alltime_roi": 1.6307,
+   "perp_account_value": 321553.24,
+   "name": null,
+   "reason": "month ROI rank"
+  },
+  {
+   "address": "0x4b67337795c5e1ca1aaea307f57b79419c632c88",
+   "roi": 1.354,
+   "alltime_roi": 4.3996,
+   "perp_account_value": 987468.57,
+   "name": null,
+   "reason": "month ROI rank"
+  },
+  {
+   "address": "0xed48b856556a69c7c40229c9c4c829b909257c9b",
+   "roi": 1.3485,
+   "alltime_roi": 1.6045,
+   "perp_account_value": 547653.01,
+   "name": null,
+   "reason": "month ROI rank"
+  }
+ ]
+}

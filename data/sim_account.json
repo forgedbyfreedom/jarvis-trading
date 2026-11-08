@@ -1,0 +1,15 @@
+{
+  "mode": "dry_run",
+  "started_at": "2026-11-08T09:00:19",
+  "starting_capital": 10000.0,
+  "realized_gross": 0.0,
+  "realized_net": 0.0,
+  "fees": {},
+  "closed_trades": 0,
+  "wins": 0,
+  "losses": 0,
+  "last_exit": {},
+  "skipped": {
+    "crypto short (spot can't short)": 27
+  }
+}

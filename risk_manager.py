@@ -7,6 +7,11 @@ from datetime import datetime
 
 log = logging.getLogger("jarvis.risk")
 
+_DATA = os.path.join(os.path.dirname(os.path.abspath(__file__)), "data")
+POSITIONS_PATH = os.path.join(_DATA, "positions.json")
+HISTORY_PATH = os.path.join(_DATA, "trade_history.json")
+DAILY_PNL_PATH = os.path.join(_DATA, "daily_pnl.json")
+
 def _read_json(path, default):
     try:
         with open(path, "r") as f:
@@ -26,17 +31,17 @@ def _today_str():
 #  DAILY P&L TRACKING
 # ────────────────────────────────────────────
 def get_daily_pnl() -> float:
-    data = _read_json("data/daily_pnl.json", {"date": "", "pnl": 0.0})
+    data = _read_json(DAILY_PNL_PATH, {"date": "", "pnl": 0.0})
     if data.get("date") != _today_str():
         return 0.0
     return data.get("pnl", 0.0)
 
 def record_pnl(amount: float):
-    data = _read_json("data/daily_pnl.json", {"date": "", "pnl": 0.0})
+    data = _read_json(DAILY_PNL_PATH, {"date": "", "pnl": 0.0})
     if data.get("date") != _today_str():
         data = {"date": _today_str(), "pnl": 0.0}
     data["pnl"] = round(data.get("pnl", 0) + amount, 4)
-    _write_json("data/daily_pnl.json", data)
+    _write_json(DAILY_PNL_PATH, data)
     log.info(f"Daily P&L updated: {data['pnl']}")
 
 def can_trade(max_daily_loss_pct: float) -> bool:
@@ -44,8 +49,9 @@ def can_trade(max_daily_loss_pct: float) -> bool:
     pnl = get_daily_pnl()
     # Negative pnl means loss
     if pnl < 0:
-        # Estimate capital as 10000 baseline (adjust via portfolio)
-        daily_loss_pct = abs(pnl) / 10000.0
+        import sim_account
+        capital = max(sim_account.equity(), 1.0)
+        daily_loss_pct = abs(pnl) / capital
         if daily_loss_pct >= max_daily_loss_pct:
             log.warning(f"Daily loss limit hit: {daily_loss_pct:.2%} >= {max_daily_loss_pct:.2%}")
             return False
@@ -55,7 +61,7 @@ def can_trade(max_daily_loss_pct: float) -> bool:
 #  POSITION COUNT
 # ────────────────────────────────────────────
 def get_open_positions() -> list:
-    return _read_json("data/positions.json", [])
+    return _read_json(POSITIONS_PATH, [])
 
 def count_open_positions() -> int:
     return len(get_open_positions())
@@ -120,22 +126,22 @@ def check_exit(position: dict, current_price: float) -> str:
 #  TRADE HISTORY
 # ────────────────────────────────────────────
 def log_trade(trade: dict):
-    history = _read_json("data/trade_history.json", [])
+    history = _read_json(HISTORY_PATH, [])
     trade["timestamp"] = datetime.now().isoformat()
     history.insert(0, trade)
-    # Keep last 500
-    history = history[:500]
-    _write_json("data/trade_history.json", history)
+    # Keep last 5000
+    history = history[:5000]
+    _write_json(HISTORY_PATH, history)
     log.info(f"Trade logged: {trade.get('asset')} {trade.get('side')} {trade.get('qty')} @ {trade.get('price')}")
 
 def get_trade_history(limit: int = 50) -> list:
-    return _read_json("data/trade_history.json", [])[:limit]
+    return _read_json(HISTORY_PATH, [])[:limit]
 
 def get_win_rate() -> dict:
-    history = _read_json("data/trade_history.json", [])
+    history = _read_json(HISTORY_PATH, [])
     closed = [t for t in history if t.get("status") == "closed"]
     wins = [t for t in closed if t.get("pnl", 0) > 0]
-    total_pnl = sum(t.get("pnl", 0) for t in closed)
+    total_pnl = sum(t.get("pnl", 0) for t in closed)  # net of costs for dry-run trades
     return {
         "total_trades": len(history),
         "closed_trades": len(closed),

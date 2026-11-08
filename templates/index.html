@@ -1,4 +1,3 @@
-===START===
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -116,6 +115,7 @@ a{color:var(--cyan);text-decoration:none}
 <div class="hdr-r">
 <span class="clk" id="clk">--:--:--</span>
 <span id="atBadge" style="font-size:.7rem;font-family:var(--mono)"></span>
+<span id="modeBadge" class="badge HOLD" title="Simulated fills on live prices, every fee charged. No real money moves.">DRY RUN</span>
 <div class="dot" id="hdrDot"></div>
 <span>ONLINE</span>
 </div>
@@ -135,6 +135,7 @@ a{color:var(--cyan);text-decoration:none}
 <!-- ═══ TABS ═══ -->
 <div class="tabs">
 <button class="tbtn on" data-t="dashboard">Dashboard</button>
+<button class="tbtn" data-t="dryrun">Dry Run &amp; Fees</button>
 <button class="tbtn" data-t="autotrade">Auto-Trade</button>
 <button class="tbtn" data-t="advisory">Advisory</button>
 <button class="tbtn" data-t="signals">Signals</button>
@@ -160,6 +161,19 @@ a{color:var(--cyan);text-decoration:none}
 <div class="pbody"><div class="stats" id="atStats"></div><div id="atPositions"></div></div>
 </div>
 <div class="panel full"><div class="phead"><h3>Trade History</h3></div><div class="pbody" id="atHistory"><span style="color:var(--dim)">Loading…</span></div></div>
+</div>
+
+<!-- ═══ DRY RUN & FEES ═══ -->
+<div id="p-dryrun" style="display:none">
+<div class="panel full" style="margin-bottom:1rem">
+<div class="phead"><h3>Auto-Trader Dry Run · after every fee</h3><div style="display:flex;gap:.5rem"><button class="btn btn-ghost" onclick="loadDry()">⟳ Refresh</button><button class="btn btn-red" onclick="resetDry()">Start fresh</button></div></div>
+<div class="pbody"><div class="stats" id="drStats"></div><div id="drFees"></div><div id="drLegacy" style="margin-top:1rem"></div></div>
+</div>
+<div class="pgrid">
+<div class="panel"><div class="phead"><h3>Polymarket US 5-min Market-Maker</h3><button class="btn btn-ghost" onclick="resetPM()">Reset</button></div><div class="pbody" id="pmBody"><span style="color:var(--dim)">Loading…</span></div></div>
+<div class="panel"><div class="phead"><h3>CopyBot · Hyperliquid mirror</h3><div style="display:flex;gap:.5rem"><button class="btn btn-ghost" onclick="runCopy()">Run now</button><button class="btn btn-ghost" onclick="resetCopy()">Reset</button></div></div><div class="pbody" id="cpBody"><span style="color:var(--dim)">Loading…</span></div></div>
+</div>
+<div class="panel full"><div class="phead"><h3>Fees &amp; costs the simulator charges</h3></div><div class="pbody" id="feeBody"><span style="color:var(--dim)">Loading…</span></div></div>
 </div>
 
 <!-- ═══ ADVISORY ═══ -->
@@ -270,13 +284,14 @@ window.addEventListener('resize',rs);rs();
 /* ═══ DASHBOARD ENGINE ═══ */
 const API='';
 setInterval(()=>{document.getElementById('clk').textContent=new Date().toLocaleTimeString();},1000);
-const tabs=['dashboard','autotrade','advisory','signals','portfolio','backtest','audit'];
+const tabs=['dashboard','dryrun','autotrade','advisory','signals','portfolio','backtest','audit'];
 document.querySelectorAll('.tbtn').forEach(b=>{b.onclick=()=>{
 document.querySelectorAll('.tbtn').forEach(x=>x.classList.remove('on'));b.classList.add('on');
 tabs.forEach(id=>{document.getElementById('p-'+id).style.display='none';});
 document.getElementById('p-'+b.dataset.t).style.display='block';
 if(b.dataset.t==='dashboard')loadDash();
 if(b.dataset.t==='autotrade')loadAT();
+if(b.dataset.t==='dryrun')loadDry();
 if(b.dataset.t==='advisory')loadAdvisory();
 if(b.dataset.t==='signals')loadScan();
 if(b.dataset.t==='portfolio')loadPF();
@@ -294,7 +309,7 @@ renderSigs('sigsCrypto',sc.crypto||{});
 renderSent(se);
 renderDashStats(sc,st);
 const s=Object.keys(sc.stocks||{}).length,c=Object.keys(sc.crypto||{}).length;
-document.getElementById('heroSub').textContent=`${s} stocks · ${c} crypto · Auto-trade: ${st.paper_mode?'PAPER':'LIVE'} ${st.paused?'(PAUSED)':'(ACTIVE)'}`;
+document.getElementById('heroSub').textContent=`${s} stocks · ${c} crypto · Auto-trade: ${st.paper_mode?'DRY RUN':'LIVE'} ${st.paused?'(PAUSED)':'(ACTIVE)'}`;
 }catch(e){toast(e.message,'err');}
 }
 
@@ -308,7 +323,7 @@ el.innerHTML=`
 <div class="stat"><div class="stat-val cyan">${at.open_positions}</div><div class="stat-lbl">Open Positions</div></div>
 <div class="stat"><div class="stat-val ${at.daily_pnl>=0?'green':'red'}">$${at.daily_pnl>=0?'+':''}${at.daily_pnl.toFixed(2)}</div><div class="stat-lbl">Daily P&L</div></div>
 <div class="stat"><div class="stat-val amber">${at.win_stats.win_rate||0}%</div><div class="stat-lbl">Win Rate</div></div>
-<div class="stat"><div class="stat-val cyan">${at.paper_mode?'PAPER':'LIVE'}</div><div class="stat-lbl">Mode</div></div>`;
+<div class="stat"><div class="stat-val cyan">${at.paper_mode?'DRY RUN':'LIVE'}</div><div class="stat-lbl">Mode</div></div>`;
 }
 
 function renderSigs(id,data){
@@ -362,7 +377,7 @@ const[st,pos,hist]=await Promise.all([rs.json(),rf.json(),ra.json()]);
 const el=document.getElementById('atStats');
 el.innerHTML=`
 <div class="stat"><div class="stat-val ${st.paused?'amber':'green'}">${st.paused?'PAUSED':'ACTIVE'}</div><div class="stat-lbl">Engine</div></div>
-<div class="stat"><div class="stat-val cyan">${st.paper_mode?'PAPER':'LIVE'}</div><div class="stat-lbl">Mode</div></div>
+<div class="stat"><div class="stat-val cyan">${st.paper_mode?'DRY RUN':'LIVE'}</div><div class="stat-lbl">Mode</div></div>
 <div class="stat"><div class="stat-val cyan">${st.open_positions}/8</div><div class="stat-lbl">Positions</div></div>
 <div class="stat"><div class="stat-val ${st.daily_pnl>=0?'green':'red'}">$${st.daily_pnl>=0?'+':''}${st.daily_pnl.toFixed(2)}</div><div class="stat-lbl">Daily P&L</div></div>
 <div class="stat"><div class="stat-val amber">${st.win_stats.win_rate||0}%</div><div class="stat-lbl">Win Rate</div></div>
@@ -375,7 +390,7 @@ pe.innerHTML=(pos||[]).length?pos.map(p=>{
 const entry=p.entry_price||0;
 return`<div class="pos"><div><div class="pos-asset">${p.asset} <span class="badge ${p.side==='buy'?'BUY':'SELL'}" style="font-size:.6rem">${p.side.toUpperCase()}</span></div>
 <div class="pos-meta">Qty: ${p.qty} · Entry: $${entry.toFixed(2)} · SL: $${(p.stop_loss||0).toFixed(2)} · TP: $${(p.take_profit||0).toFixed(2)}</div>
-<div class="pos-meta">${p.paper?'PAPER':'LIVE'} · ${(p.entry_time||'').slice(0,16)}</div></div>
+<div class="pos-meta">${p.paper?'DRY RUN':'LIVE'} · ${(p.entry_time||'').slice(0,16)}</div></div>
 <button class="btn btn-red" style="font-size:.7rem" onclick="closePos('${p.id}')">✕ Close</button></div>`;
 }).join(''):'<span style="color:var(--dim)">No open positions. Engine is scanning…</span>';
 const he=document.getElementById('atHistory');
@@ -383,7 +398,7 @@ he.innerHTML=(hist||[]).length?hist.slice(0,20).map(t=>{
 const pnl=t.pnl||0;
 return`<div class="sig" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:.3rem">
 <span style="font-family:var(--mono);font-size:.8rem">${(t.timestamp||'').slice(0,16)} · ${(t.side||'').toUpperCase()} ${t.asset} × ${t.qty} @ $${(t.price||0).toFixed(2)}</span>
-<span style="font-size:.7rem;color:var(--dim)">${t.status} ${t.reason?'· '+t.reason:''}</span>
+<span style="font-size:.7rem;color:var(--dim)">${t.status} ${t.reason?'· '+t.reason:''}${t.costs?' · costs $'+Object.values(t.costs).reduce((a,b)=>a+b,0).toFixed(2):''}${t.gross_pnl!==undefined?' · gross $'+t.gross_pnl.toFixed(2):''}</span>
 ${pnl!==0?`<span class="pos-pnl ${pnl>=0?'pos':'neg'}" style="font-size:.8rem">${pnl>=0?'+':''}${pnl.toFixed(2)}</span>`:''}</div>`;
 }).join(''):'<span style="color:var(--dim)">No trades yet.</span>';
 }catch(e){toast(e.message,'err');}
@@ -410,4 +425,164 @@ loadAT();
 
 /* ── ADVISORY ── */
 async function loadAdvisory(){
-const el=document
+const el=document.getElementById('advBody');
+el.innerHTML='<span style="color:var(--dim)">Generating…</span>';
+try{
+const d=await (await fetch(API+'/api/advisory')).json();
+const list=(arr,col)=>(arr||[]).length?arr.map(x=>`<div class="sig" style="border-left:3px solid ${col}">${x}</div>`).join(''):'<span style="color:var(--dim)">None.</span>';
+const opps=(d.top_opportunities||[]).map(o=>`<div class="sig"><div class="sig-top"><span><span class="sig-asset">${o.asset}</span><span class="sig-price">$${(o.price||0).toFixed(2)}</span></span><span class="badge ${o.action}">${o.action}</span></div>
+<div style="font-size:.75rem;color:var(--dim)">Confidence ${o.confidence}% · Stop $${o.suggested_stop_loss} · Target $${o.suggested_take_profit} · R:R ${o.risk_reward}</div>
+<div class="sig-why">${o.rationale||''}</div></div>`).join('')||'<span style="color:var(--dim)">No high-confidence setups right now.</span>';
+el.innerHTML=`<div class="sig"><b>${d.overall_stance||''}</b><div style="font-size:.8rem;color:var(--dim);margin-top:.3rem">${d.market_regime||''}</div><div style="margin-top:.4rem;font-size:.85rem">${d.summary||''}</div></div>
+<h4 style="margin:1rem 0 .5rem;color:var(--cyan);font-size:.8rem;letter-spacing:.1em">TOP OPPORTUNITIES</h4>${opps}
+<h4 style="margin:1rem 0 .5rem;color:var(--red);font-size:.8rem;letter-spacing:.1em">RISK ALERTS</h4>${list(d.risk_alerts,'var(--red)')}
+<h4 style="margin:1rem 0 .5rem;color:var(--amber);font-size:.8rem;letter-spacing:.1em">AVOID</h4>${list(d.things_to_avoid,'var(--amber)')}
+<h4 style="margin:1rem 0 .5rem;color:var(--green);font-size:.8rem;letter-spacing:.1em">ALLOCATION</h4>${list(d.allocation_advice,'var(--green)')}
+<div style="font-size:.7rem;color:var(--dim);margin-top:1rem">Signals only, not financial advice. ${(d.generated||'').slice(0,16)}</div>`;
+}catch(e){el.innerHTML='<span style="color:var(--red)">Advisory failed: '+e.message+'</span>';}
+}
+
+/* ── PORTFOLIO ── */
+async function loadPF(){
+try{
+const[h,s,c]=await Promise.all([fetch(API+'/api/portfolio/health'),fetch(API+'/api/portfolio/stocks'),fetch(API+'/api/portfolio/crypto')].map(p=>p.then(r=>r.json())));
+document.getElementById('pfStats').innerHTML=`
+<div class="stat"><div class="stat-val cyan">${h.open_positions}/${h.max_positions}</div><div class="stat-lbl">Open Positions</div></div>
+<div class="stat"><div class="stat-val ${h.total_pnl>=0?'green':'red'}">$${h.total_pnl.toFixed(2)}</div><div class="stat-lbl">Net P&L</div></div>
+<div class="stat"><div class="stat-val amber">${h.win_rate}%</div><div class="stat-lbl">Win Rate</div></div>
+<div class="stat"><div class="stat-val cyan">${h.allocation.stocks}% / ${h.allocation.crypto}%</div><div class="stat-lbl">Stocks / Crypto</div></div>
+<div class="stat"><div class="stat-val cyan">${h.paper_trading?'DRY RUN':'LIVE'}</div><div class="stat-lbl">Mode</div></div>`;
+const ps=(s.positions||[]);
+document.getElementById('pfStock').innerHTML=s.error?`<span style="color:var(--red)">${s.error}</span>`:ps.length?ps.map(p=>`<div class="pos"><div class="pos-asset">${p.symbol}</div><div class="pos-meta">${p.qty} @ $${(+p.avg_entry_price).toFixed(2)} · P&L $${(+p.unrealized_pl).toFixed(2)}</div></div>`).join(''):`<span style="color:var(--dim)">${s.mode==='paper'?'No Alpaca keys set: dry run only. Simulated positions are on the Auto-Trade tab.':'No holdings.'}</span>`;
+const cb=(c.balances||[]);
+document.getElementById('pfCrypto').innerHTML=c.error?`<span style="color:var(--red)">${c.error}</span>`:Array.isArray(cb)&&cb.length?cb.map(b=>`<div class="pos"><div class="pos-asset">${b.currency||b.name||''}</div><div class="pos-meta">${JSON.stringify(b.available_balance||b.balance||'')}</div></div>`).join(''):`<span style="color:var(--dim)">${c.mode==='paper'?'No Coinbase keys set: dry run only.':'No balances.'}</span>`;
+}catch(e){toast(e.message,'err');}
+}
+
+/* ── BACKTEST ── */
+async function doBacktest(){
+const sym=(document.getElementById('bS').value||'').trim().toUpperCase(),t=document.getElementById('bT').value,d=document.getElementById('bD').value||365;
+if(!sym){toast('Enter a symbol','err');return;}
+const el=document.getElementById('bOut');el.innerHTML='<span style="color:var(--dim)">Running…</span>';
+try{
+const r=await (await fetch(API+`/api/backtest/${encodeURIComponent(t==='crypto'?sym.toLowerCase():sym)}?asset_type=${t}&days=${d}`)).json();
+if(r.error){el.innerHTML=`<span style="color:var(--red)">${r.error}</span>`;return;}
+el.innerHTML=`<div class="stats">
+<div class="stat"><div class="stat-val ${r.total_return_pct>=0?'green':'red'}">${r.total_return_pct}%</div><div class="stat-lbl">Return</div></div>
+<div class="stat"><div class="stat-val amber">${r.win_rate}%</div><div class="stat-lbl">Win Rate</div></div>
+<div class="stat"><div class="stat-val cyan">${r.total_trades}</div><div class="stat-lbl">Trades</div></div>
+<div class="stat"><div class="stat-val red">${r.max_drawdown_pct}%</div><div class="stat-lbl">Max Drawdown</div></div>
+<div class="stat"><div class="stat-val cyan">${r.profit_factor}</div><div class="stat-lbl">Profit Factor</div></div>
+<div class="stat"><div class="stat-val cyan">$${(r.final_equity||0).toLocaleString()}</div><div class="stat-lbl">Final Equity</div></div></div>
+<div style="font-size:.7rem;color:var(--amber);margin:.4rem 0 .8rem">Backtest ignores fees and spread. Use the Dry Run tab for after-fee results.</div>
+${(r.trades||[]).slice(-30).reverse().map(x=>`<div class="sig" style="font-family:var(--mono);font-size:.78rem">${x.date} · ${x.side} @ $${(+x.price).toFixed(2)}${x.pnl_pct!==undefined?` · ${x.pnl_pct}%`:''}${x.equity?` · eq $${x.equity}`:''}</div>`).join('')}`;
+}catch(e){el.innerHTML=`<span style="color:var(--red)">${e.message}</span>`;}
+}
+
+/* ── AUDIT ── */
+async function loadAudit(){
+try{
+const a=await (await fetch(API+'/api/audit')).json();
+document.getElementById('aOut').innerHTML=(a||[]).length?a.slice().reverse().slice(0,200).map(x=>`<div class="sig" style="font-family:var(--mono);font-size:.75rem">${(x.ts||'').slice(0,19)} · <b>${x.action}</b> · ${JSON.stringify(x.details)}</div>`).join(''):'<span style="color:var(--dim)">No audit entries yet.</span>';
+}catch(e){toast(e.message,'err');}
+}
+
+/* ── MANUAL TRADE MODAL ── */
+function openEx(asset,type,side){
+document.getElementById('mA').value=asset;document.getElementById('mT').value=type;
+document.getElementById('mS').value=side==='sell'?'sell':'buy';document.getElementById('mQ').value='';document.getElementById('mC').checked=false;
+document.getElementById('molEx').classList.add('show');
+}
+function closeMol(){document.getElementById('molEx').classList.remove('show');}
+async function doExec(){
+const body={asset:document.getElementById('mA').value,asset_type:document.getElementById('mT').value,side:document.getElementById('mS').value,qty:parseFloat(document.getElementById('mQ').value),user_confirmed:document.getElementById('mC').checked};
+if(!(body.qty>0)){toast('Enter a quantity','err');return;}
+if(!body.user_confirmed){toast('Tick the confirmation box','err');return;}
+try{const d=await (await fetch(API+'/api/execute',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)})).json();
+toast(d.status==='paper'?'Logged as dry run (no broker keys)':d.status==='filled'?'Order filled':(d.error||d.reason||d.status),d.status==='error'||d.status==='rejected'?'err':'ok');closeMol();
+}catch(e){toast(e.message,'err');}
+}
+
+/* ── SEARCH ── */
+function gSearch(){const q=document.getElementById('sGoogle').value.trim();if(q)window.open('https://www.google.com/search?q='+encodeURIComponent(q),'_blank');}
+async function jarvisSearch(){
+const q=document.getElementById('sJarvis').value.trim();if(!q)return;
+try{const d=await (await fetch(API+'/api/scan')).json();
+const all={...(d.stocks||{}),...(d.crypto||{})};
+const hit=Object.entries(all).filter(([k])=>k.toLowerCase().includes(q.toLowerCase()));
+if(!hit.length){toast(`${q} isn't in the scan list`,'err');return;}
+document.querySelector('.tbtn[data-t="signals"]').click();
+setTimeout(()=>{renderSigs('sigsStock2',Object.fromEntries(hit.filter(([,v])=>v.asset_type==='stock')));renderSigs('sigsCrypto2',Object.fromEntries(hit.filter(([,v])=>v.asset_type==='crypto')));},300);
+}catch(e){toast(e.message,'err');}
+}
+document.getElementById('sJarvis').addEventListener('keydown',e=>{if(e.key==='Enter')jarvisSearch();});
+document.getElementById('sGoogle').addEventListener('keydown',e=>{if(e.key==='Enter')gSearch();});
+
+/* ── DRY RUN & FEES ── */
+const money=v=>(v<0?'-':'')+'$'+Math.abs(+v||0).toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2});
+const cls=v=>v>0?'green':v<0?'red':'cyan';
+const nice=k=>({trading_fee:'Trading fee',spread_slippage:'Spread + slippage',sec_fee:'SEC fee',finra_taf:'FINRA TAF',short_borrow:'Short borrow',commission:'Commission',funding:'Funding',slippage:'Slippage'}[k]||k);
+async function loadDry(){
+try{
+const[s,l,f,pm,cp]=await Promise.all(['/api/sim/summary','/api/sim/legacy','/api/fees','/api/pm/summary','/api/copy/summary'].map(u=>fetch(API+u).then(r=>r.json())));
+document.getElementById('drStats').innerHTML=`
+<div class="stat"><div class="stat-val cyan">${money(s.equity)}</div><div class="stat-lbl">Sim equity (of ${money(s.starting_capital)})</div></div>
+<div class="stat"><div class="stat-val ${cls(s.realized_gross)}">${money(s.realized_gross)}</div><div class="stat-lbl">P&L before costs</div></div>
+<div class="stat"><div class="stat-val red">-${money(s.fees_total)}</div><div class="stat-lbl">Fees &amp; costs</div></div>
+<div class="stat"><div class="stat-val ${cls(s.realized_net)}">${money(s.realized_net)}</div><div class="stat-lbl">Net P&L</div></div>
+<div class="stat"><div class="stat-val amber">-${money(s.est_tax)}</div><div class="stat-lbl">Est. tax set-aside</div></div>
+<div class="stat"><div class="stat-val ${cls(s.after_tax)}">${money(s.after_tax)}</div><div class="stat-lbl">Kept after tax</div></div>
+<div class="stat"><div class="stat-val amber">${s.win_rate}%</div><div class="stat-lbl">Win rate (${s.closed_trades} closed)</div></div>`;
+const fe=Object.entries(s.fees||{});
+document.getElementById('drFees').innerHTML=`<div style="font-size:.78rem;color:var(--dim)">Started ${s.started_at.replace('T',' ')} · crypto venue: ${s.crypto_venue}${fe.length?' · '+fe.map(([k,v])=>`${nice(k)} ${money(v)}`).join(' · '):''}${Object.keys(s.skipped||{}).length?'<br>Signals the simulator refused: '+Object.entries(s.skipped).map(([k,v])=>`${k} ×${v}`).join(', '):''}</div>`;
+document.getElementById('drLegacy').innerHTML=l&&l.closed_trades?`<div class="sig" style="border-left:3px solid var(--amber)">
+<b>The old paper results (before this upgrade) weren't real.</b> ${l.closed_trades} closed trades showed ${money(l.gross_pnl)}.
+Today's fees and spreads would have cost ${money(l.costs)} (${Object.entries(l.costs_by_type).filter(([,v])=>v>0).map(([k,v])=>`${nice(k)} ${money(v)}`).join(', ')}), leaving ${money(l.net_pnl)}.
+More importantly, ${l.stock_exits_outside_market_hours} of the stock exits happened while the market was closed, on stale prices, which a real broker would never fill. Leave those out and the whole run made ${money(l.gross_excluding_closed_market_exits)} before fees. The simulator now only trades stocks 9:30–4:00 ET at live prices. Old history is archived in data/archive.</div>`:'';
+renderPM(pm);renderCopy(cp);renderFees(f);
+}catch(e){toast(e.message,'err');}
+}
+function renderPM(p){
+const t=p.totals||{};
+const books=Object.entries(p.books||{}).map(([c,b])=>`${c.toUpperCase()} ${b.bid??'–'}/${b.ask??'–'}`).join(' · ');
+const open=(p.open||[]).filter(o=>o.fills||o.bid||o.ask);
+document.getElementById('pmBody').innerHTML=`<div class="stats">
+<div class="stat"><div class="stat-val ${cls(t.pnl)}">${money(t.pnl)}</div><div class="stat-lbl">Settled P&L</div></div>
+<div class="stat"><div class="stat-val cyan">${t.markets||0}</div><div class="stat-lbl">Markets settled</div></div>
+<div class="stat"><div class="stat-val cyan">${t.fills||0}</div><div class="stat-lbl">Fills</div></div>
+<div class="stat"><div class="stat-val ${cls(t.pnl_per_market)}">${money(t.pnl_per_market)}</div><div class="stat-lbl">Per market</div></div></div>
+<div style="font-size:.75rem;color:var(--dim)">${p.running?'Running':'Stopped'} · last check ${(p.last_poll||'–').slice(11,19)} UTC · Up bid/ask: ${books||'–'}</div>
+<div style="font-size:.75rem;color:var(--dim);margin:.3rem 0 .6rem">Joins the best bid and offer, ${p.settings.quote_size} contracts each, holds to settlement. Counts a fill only when the market trades through our price. ${p.settings.fees}.</div>
+${open.map(o=>`<div class="sig" style="font-family:var(--mono);font-size:.75rem">${o.slug.replace(/^cpc[a-z]*-/,'')} · pos ${o.pos} · ${o.fills} fills · bid ${o.bid??'–'} ask ${o.ask??'–'}</div>`).join('')}
+${(p.recent||[]).slice(0,10).map(r=>`<div class="sig" style="display:flex;justify-content:space-between;font-family:var(--mono);font-size:.75rem"><span>${r.slug.replace(/^cpc[a-z]*-/,'')} → ${r.result} · ${r.fills} fills · end pos ${r.end_pos}</span><span class="pos-pnl ${r.pnl>=0?'pos':'neg'}">${money(r.pnl)}</span></div>`).join('')}`;
+}
+function renderCopy(c){
+const cs=c.costs||{};
+document.getElementById('cpBody').innerHTML=`<div class="stats">
+<div class="stat"><div class="stat-val cyan">${money(c.equity)}</div><div class="stat-lbl">Equity</div></div>
+<div class="stat"><div class="stat-val ${cls(c.pnl_before_costs)}">${money(c.pnl_before_costs)}</div><div class="stat-lbl">Before costs</div></div>
+<div class="stat"><div class="stat-val red">-${money(c.costs_total)}</div><div class="stat-lbl">Costs</div></div>
+<div class="stat"><div class="stat-val ${cls(c.pnl_total)}">${money(c.pnl_total)}</div><div class="stat-lbl">Net P&L</div></div></div>
+<div style="font-size:.75rem;color:var(--dim)">Fees ${money(cs.trading_fee)} · slippage ${money(cs.slippage)} · funding ${money(cs.funding)} · leverage ${c.leverage}x${c.halted_today?' · <span style="color:var(--red)">daily loss limit hit, flat until tomorrow</span>':''}</div>
+<div style="font-size:.75rem;color:var(--dim);margin:.3rem 0 .6rem">Rebalances every 30 min · last run ${(c.last_run||'–').replace('T',' ').slice(0,16)}${c.running_cycle?' · running now…':''}${c.last_error?` · <span style="color:var(--red)">${c.last_error}</span>`:''}</div>
+${(c.positions||[]).slice(0,12).map(p=>`<div class="sig" style="display:flex;justify-content:space-between;font-family:var(--mono);font-size:.75rem"><span>${p.coin} <span class="badge ${p.side==='LONG'?'BUY':'SELL'}" style="font-size:.6rem">${p.side}</span></span><span>${money(p.notional)} · entry ${p.entry} · mark ${p.mark??'–'}</span></div>`).join('')||'<span style="color:var(--dim)">No positions yet.</span>'}
+<div style="font-size:.7rem;color:var(--dim);margin-top:.6rem">Copying: ${(c.wallets||[]).map(w=>w.address.slice(0,8)+'… '+(w.roi!=null?Math.round(w.roi*100)+'%/mo':'')).join(', ')||'ranking wallets…'}</div>`;
+}
+function renderFees(f){
+const sec=(title,o)=>`<div class="sig"><b style="color:var(--cyan)">${title}</b>${Object.entries(o).filter(([k])=>k!=='venue').map(([k,v])=>`<div style="font-size:.78rem;margin-top:.2rem"><span style="color:var(--dim)">${k.replace(/_/g,' ')}:</span> ${v}</div>`).join('')}</div>`;
+document.getElementById('feeBody').innerHTML=`<div class="pgrid" style="margin-bottom:0">
+${sec('Stocks · '+f.stocks.venue,f.stocks)}${sec('Crypto · '+f.crypto.venue,f.crypto)}${sec('Hyperliquid perps (CopyBot)',f.hyperliquid)}${sec('Polymarket US',f.polymarket_us)}${sec('Moving money',f.money_movement)}<div class="sig"><b style="color:var(--cyan)">Taxes</b><div style="font-size:.78rem;margin-top:.2rem">${f.taxes}</div></div></div>
+<div style="font-size:.7rem;color:var(--dim);margin-top:.6rem">Rates checked Nov 2026: ${f.sources.map(x=>`<a href="${x.url}" target="_blank">${x.name}</a>`).join(' · ')}. Change them in config.py if a broker updates its schedule.</div>`;
+}
+async function resetDry(){if(!confirm('Start a fresh dry run? Current simulated history is archived, not deleted.'))return;await fetch(API+'/api/sim/reset',{method:'POST'});toast('Fresh dry run started');loadDry();}
+async function resetPM(){if(!confirm('Reset the Polymarket simulation?'))return;await fetch(API+'/api/pm/reset',{method:'POST'});loadDry();}
+async function resetCopy(){if(!confirm('Reset the CopyBot simulation?'))return;await fetch(API+'/api/copy/reset',{method:'POST'});loadDry();}
+async function runCopy(){await fetch(API+'/api/copy/run',{method:'POST'});toast('CopyBot cycle started (takes ~1 min)');setTimeout(loadDry,60000);}
+
+/* ── BOOT ── */
+loadDash();
+setInterval(()=>{const on=document.querySelector('.tbtn.on');if(!on)return;const t=on.dataset.t;
+if(t==='dashboard')loadDash();if(t==='autotrade')loadAT();if(t==='dryrun')loadDry();},30000);
+</script>
+</body>
+</html>
