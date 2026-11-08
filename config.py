@@ -73,7 +73,8 @@ TRAILING_STOP_PCT     = 0.04
 STOCKS_REGULAR_HOURS_ONLY = True   # stale after-hours quotes created fake wins before
 REENTRY_COOLDOWN_MIN  = 240        # wait 4h before re-entering the same asset
 MIN_HOLD_MIN          = 30         # no signal-flip exits in the first 30 min
-ALLOW_STOCK_SHORTS    = True       # Alpaca margin account (min $2,000 equity) required
+ALLOW_STOCK_SHORTS    = True       # only used once equity reaches MARGIN_MIN_EQUITY
+MARGIN_MIN_EQUITY     = 2_000.0    # FINRA/Alpaca minimum equity for a margin account (needed to short)
 ALLOW_CRYPTO_SHORTS   = False      # spot exchanges can't short
 
 # DCA
@@ -87,7 +88,7 @@ REBALANCE_INTERVAL    = 3600
 TARGET_ALLOCATION     = {"stocks": 0.6, "crypto": 0.4}
 
 # ── DRY-RUN SIMULATOR ──
-SIM_STARTING_CAPITAL  = 10_000.0
+SIM_STARTING_CAPITAL  = 500.0      # each simulator (auto-trader, Polymarket, CopyBot) starts with this
 PM_SIM_ENABLED        = True       # Polymarket US 5-min market-maker (always dry run)
 COPY_SIM_ENABLED      = True       # CopyBot Hyperliquid mirror (always dry run)
 EST_TAX_RATE          = 0.30       # short-term gains set-aside estimate (fed + SC), not tax advice

@@ -17,7 +17,7 @@ from config import (
     DCA_ENABLED, DCA_AMOUNT_USD, DCA_MIN_CONFIDENCE,
     YAHOO_TICKERS, CRYPTO_TICKERS,
     STOCKS_REGULAR_HOURS_ONLY, REENTRY_COOLDOWN_MIN, MIN_HOLD_MIN,
-    ALLOW_STOCK_SHORTS, ALLOW_CRYPTO_SHORTS, TRADING_MODE,
+    ALLOW_STOCK_SHORTS, ALLOW_CRYPTO_SHORTS, TRADING_MODE, MARGIN_MIN_EQUITY,
 )
 import fees
 import sim_account as sim
@@ -239,6 +239,9 @@ def _process_signal(rec, asset, asset_type, open_count, positions):
             return
         if asset_type == "stock" and not ALLOW_STOCK_SHORTS:
             sim.note_skip("stock short disabled")
+            return
+        if asset_type == "stock" and sim.equity(rm.get_open_positions()) < MARGIN_MIN_EQUITY:
+            sim.note_skip(f"stock short (needs ${MARGIN_MIN_EQUITY:,.0f} margin account)")
             return
     if asset_type == "stock" and STOCKS_REGULAR_HOURS_ONLY and not fees.us_market_open():
         return  # no fills outside the regular session

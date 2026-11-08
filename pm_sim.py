@@ -105,6 +105,7 @@ def _load() -> dict:
             "started_at": _now().isoformat(timespec="seconds"),
             "markets": {},      # slug -> {coin, end, pos, cash, bid, ask, fills, last_shares}
             "settled": [],      # closed-market results, newest first
+            "starting_capital": C.SIM_STARTING_CAPITAL,
             "totals": {"pnl": 0.0, "fills": 0, "volume_contracts": 0, "markets": 0,
                        "fees": 0.0, "wins": 0, "losses": 0},
         }
@@ -127,6 +128,14 @@ def _fill(m: dict, side: str, price: float, qty: int) -> None:
         m["cash"] += price * qty
     m["fills"].append({"t": _now().strftime("%H:%M:%S"), "side": side, "px": price, "qty": qty})
     m["volume"] = m.get("volume", 0) + qty
+
+
+def _available(st: dict) -> float:
+    """Cash not tied up: start + settled P&L + open-market cash flows - $1 collateral per short contract."""
+    cap = st.get("starting_capital", C.SIM_STARTING_CAPITAL) + st["totals"]["pnl"]
+    for m in st["markets"].values():
+        cap += m["cash"] - max(0, -m["pos"]) * 1.0
+    return cap
 
 
 def _step_market(st: dict, coin: str, start: datetime) -> None:
@@ -163,8 +172,11 @@ def _step_market(st: dict, coin: str, start: datetime) -> None:
     if not live or bid is None or ask is None or ask - bid < MIN_SPREAD - 1e-9:
         m["bid"] = m["ask"] = None
         return
-    m["bid"] = bid if m["pos"] < MAX_INVENTORY else None
-    m["ask"] = ask if m["pos"] > -MAX_INVENTORY else None
+    avail = _available(st)
+    buy_cost = bid * QUOTE_SIZE
+    sell_cost = 0.0 if m["pos"] >= QUOTE_SIZE else (1 - ask) * QUOTE_SIZE  # selling long you hold is free
+    m["bid"] = bid if m["pos"] < MAX_INVENTORY and avail >= buy_cost else None
+    m["ask"] = ask if m["pos"] > -MAX_INVENTORY and avail >= sell_cost else None
 
 
 def _settle(st: dict) -> None:
@@ -255,7 +267,11 @@ def summary() -> dict:
     open_mk = [{"slug": s, "coin": m["coin"], "pos": m["pos"], "bid": m["bid"], "ask": m["ask"],
                 "fills": len(m["fills"]), "cash": round(m["cash"], 2)} for s, m in st["markets"].items()]
     n = t["markets"]
+    cap0 = st.get("starting_capital", C.SIM_STARTING_CAPITAL)
     return {
+        "starting_capital": cap0,
+        "equity": round(cap0 + t["pnl"], 2),
+        "available_cash": round(_available(st), 2),
         "running": bool(_thread and _thread.is_alive()),
         "mode": "dry_run",
         "started_at": st["started_at"],

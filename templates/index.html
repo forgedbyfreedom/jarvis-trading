@@ -547,6 +547,7 @@ const t=p.totals||{};
 const books=Object.entries(p.books||{}).map(([c,b])=>`${c.toUpperCase()} ${b.bid??'–'}/${b.ask??'–'}`).join(' · ');
 const open=(p.open||[]).filter(o=>o.fills||o.bid||o.ask);
 document.getElementById('pmBody').innerHTML=`<div class="stats">
+<div class="stat"><div class="stat-val cyan">${money(p.equity)}</div><div class="stat-lbl">Equity (of ${money(p.starting_capital)})</div></div>
 <div class="stat"><div class="stat-val ${cls(t.pnl)}">${money(t.pnl)}</div><div class="stat-lbl">Settled P&L</div></div>
 <div class="stat"><div class="stat-val cyan">${t.markets||0}</div><div class="stat-lbl">Markets settled</div></div>
 <div class="stat"><div class="stat-val cyan">${t.fills||0}</div><div class="stat-lbl">Fills</div></div>
@@ -559,7 +560,7 @@ ${(p.recent||[]).slice(0,10).map(r=>`<div class="sig" style="display:flex;justif
 function renderCopy(c){
 const cs=c.costs||{};
 document.getElementById('cpBody').innerHTML=`<div class="stats">
-<div class="stat"><div class="stat-val cyan">${money(c.equity)}</div><div class="stat-lbl">Equity</div></div>
+<div class="stat"><div class="stat-val cyan">${money(c.equity)}</div><div class="stat-lbl">Equity (of ${money(c.starting_capital)})</div></div>
 <div class="stat"><div class="stat-val ${cls(c.pnl_before_costs)}">${money(c.pnl_before_costs)}</div><div class="stat-lbl">Before costs</div></div>
 <div class="stat"><div class="stat-val red">-${money(c.costs_total)}</div><div class="stat-lbl">Costs</div></div>
 <div class="stat"><div class="stat-val ${cls(c.pnl_total)}">${money(c.pnl_total)}</div><div class="stat-lbl">Net P&L</div></div></div>
