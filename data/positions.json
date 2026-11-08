@@ -1,0 +1,200 @@
+[
+  {
+    "id": "PYPL_stock_1793385584",
+    "asset": "PYPL",
+    "asset_type": "stock",
+    "side": "buy",
+    "qty": 17.479462,
+    "entry_price": 57.21,
+    "entry_time": "2026-10-30T14:39:44.508291",
+    "stop_loss": 55.4937,
+    "take_profit": 61.7868,
+    "confidence": 100,
+    "rationale": [
+      "RSI 57.5 - neutral",
+      "MACD positive - mild bullish bias",
+      "Bollinger position 0.76 - mid-range",
+      "Price > SMA20 > SMA50 - uptrend",
+      "Volume 1.1x avg - no strong signal"
+    ],
+    "status": "open",
+    "pnl": 0.0,
+    "paper": true
+  },
+  {
+    "id": "AMZN_stock_1793893621",
+    "asset": "AMZN",
+    "asset_type": "stock",
+    "side": "buy",
+    "qty": 3.912975,
+    "entry_price": 255.56,
+    "entry_time": "2026-11-05T10:47:01.405231",
+    "stop_loss": 247.8932,
+    "take_profit": 276.0048,
+    "confidence": 100,
+    "rationale": [
+      "RSI 53.3 - neutral",
+      "MACD positive - mild bullish bias",
+      "Bollinger position 0.55 - mid-range",
+      "Price > SMA20 > SMA50 - uptrend",
+      "Volume 1.4x avg - no strong signal"
+    ],
+    "status": "open",
+    "pnl": 0.0,
+    "paper": true
+  },
+  {
+    "id": "V_stock_1793931788",
+    "asset": "V",
+    "asset_type": "stock",
+    "side": "buy",
+    "qty": 2.36636,
+    "entry_price": 422.59,
+    "entry_time": "2026-11-05T21:23:08.430402",
+    "stop_loss": 409.9123,
+    "take_profit": 456.3972,
+    "confidence": 100,
+    "rationale": [
+      "RSI 61.7 - neutral",
+      "MACD positive - mild bullish bias",
+      "Bollinger position 0.81 - mid-range",
+      "Price > SMA20 > SMA50 - uptrend",
+      "Volume 1.2x avg - no strong signal"
+    ],
+    "status": "open",
+    "pnl": 0.0,
+    "paper": true
+  },
+  {
+    "id": "JNJ_stock_1793931789",
+    "asset": "JNJ",
+    "asset_type": "stock",
+    "side": "buy",
+    "qty": 3.67215,
+    "entry_price": 272.32,
+    "entry_time": "2026-11-05T21:23:09.000534",
+    "stop_loss": 264.1504,
+    "take_profit": 294.1056,
+    "confidence": 100,
+    "rationale": [
+      "RSI 64.7 - neutral",
+      "MACD positive - mild bullish bias",
+      "Bollinger position 0.76 - mid-range",
+      "Mixed MA picture",
+      "Volume 1.1x avg - no strong signal"
+    ],
+    "status": "open",
+    "pnl": 0.0,
+    "paper": true
+  },
+  {
+    "id": "MA_stock_1793931791",
+    "asset": "MA",
+    "asset_type": "stock",
+    "side": "buy",
+    "qty": 1.524576,
+    "entry_price": 655.92,
+    "entry_time": "2026-11-05T21:23:11.214671",
+    "stop_loss": 636.2424,
+    "take_profit": 708.3936,
+    "confidence": 100,
+    "rationale": [
+      "RSI 63.5 - neutral",
+      "MACD positive - mild bullish bias",
+      "Bollinger position 0.86 - mid-range",
+      "Price > SMA20 > SMA50 - uptrend",
+      "Volume 1.2x avg - no strong signal"
+    ],
+    "status": "open",
+    "pnl": 0.0,
+    "paper": true
+  },
+  {
+    "id": "PEP_stock_1793931792",
+    "asset": "PEP",
+    "asset_type": "stock",
+    "side": "buy",
+    "qty": 7.007217,
+    "entry_price": 142.71,
+    "entry_time": "2026-11-05T21:23:12.359174",
+    "stop_loss": 138.4287,
+    "take_profit": 154.1268,
+    "confidence": 62,
+    "rationale": [
+      "RSI 68.8 - neutral",
+      "MACD positive - mild bullish bias",
+      "At upper Bollinger Band - stretched up",
+      "Price > SMA20 > SMA50 - uptrend",
+      "Volume 1.3x avg - no strong signal"
+    ],
+    "status": "open",
+    "pnl": 0.0,
+    "paper": true
+  },
+  {
+    "id": "XOM_stock_1793976068",
+    "asset": "XOM",
+    "asset_type": "stock",
+    "side": "buy",
+    "qty": 6.056568,
+    "entry_price": 165.11,
+    "entry_time": "2026-11-06T09:41:08.115475",
+    "stop_loss": 160.1567,
+    "take_profit": 178.3188,
+    "confidence": 75,
+    "rationale": [
+      "RSI 34.0 - neutral",
+      "MACD negative - mild bearish bias",
+      "At lower Bollinger Band - stretched down",
+      "Mixed MA picture",
+      "Volume 1.1x avg - no strong signal"
+    ],
+    "status": "open",
+    "pnl": 0.0,
+    "paper": true
+  },
+  {
+    "id": "NVDA_stock_1794013264",
+    "asset": "NVDA",
+    "asset_type": "stock",
+    "side": "buy",
+    "qty": 5.506608,
+    "entry_price": 181.6,
+    "entry_time": "2026-11-06T20:01:04.228016",
+    "stop_loss": 176.152,
+    "take_profit": 196.128,
+    "confidence": 54,
+    "rationale": [
+      "RSI 27.6 - oversold, bounce potential",
+      "MACD negative - mild bearish bias",
+      "At lower Bollinger Band - stretched down",
+      "Price < SMA20 < SMA50 - downtrend",
+      "Volume 1.5x avg - no strong signal"
+    ],
+    "status": "open",
+    "pnl": 0.0,
+    "paper": true
+  },
+  {
+    "id": "DIS_stock_1794013275",
+    "asset": "DIS",
+    "asset_type": "stock",
+    "side": "buy",
+    "qty": 8.530967,
+    "entry_price": 117.22,
+    "entry_time": "2026-11-06T20:01:15.884149",
+    "stop_loss": 113.7034,
+    "take_profit": 126.5976,
+    "confidence": 62,
+    "rationale": [
+      "RSI 66.4 - neutral",
+      "MACD positive - mild bullish bias",
+      "At upper Bollinger Band - stretched up",
+      "Price > SMA20 > SMA50 - uptrend",
+      "Volume 1.2x avg - no strong signal"
+    ],
+    "status": "open",
+    "pnl": 0.0,
+    "paper": true
+  }
+]
