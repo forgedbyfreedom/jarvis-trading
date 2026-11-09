@@ -27,7 +27,7 @@ a{color:var(--cyan);text-decoration:none}
 .hero{position:relative;height:400px;margin-bottom:1.5rem;display:flex;align-items:center;justify-content:center;overflow:hidden;border-radius:14px;background:radial-gradient(ellipse 60% 50% at 50% 50%,rgba(0,150,255,.04),transparent);border:1px solid rgba(0,200,255,.06)}
 #heroCanvas{width:100%;height:100%;display:block}
 .hero-label{position:absolute;bottom:1.2rem;left:50%;transform:translateX(-50%);text-align:center;pointer-events:none}
-.hero-label h2{font-size:1.3rem;font-weight:200;letter-spacing:.2em;color:rgba(255,255,255,.7)}
+.hero-label h2{font-size:1.45rem;font-weight:800;letter-spacing:.14em;color:#fff;text-transform:uppercase;text-shadow:0 0 18px rgba(0,212,255,.55),0 2px 6px rgba(0,0,0,.9)}
 .hero-label p{font-size:.8rem;color:var(--dim);margin-top:.3rem}
 .searches{display:grid;grid-template-columns:1fr 1fr;gap:.8rem;margin-bottom:1.5rem}
 .sbox{display:flex;align-items:center;background:rgba(8,14,28,.7);border:1px solid var(--border);border-radius:8px;overflow:hidden}
@@ -123,7 +123,7 @@ a{color:var(--cyan);text-decoration:none}
 
 <!-- ═══ HERO ═══ -->
 <div class="hero"><canvas id="heroCanvas"></canvas>
-<div class="hero-label"><h2 id="heroTitle">Forged By Freedom — Trading Engine</h2><p id="heroSub">Scanning · Deciding · Executing · Managing</p></div>
+<div class="hero-label"><h2 id="heroTitle">Forged by Freedom Command Center</h2><p id="heroSub">Scanning · Deciding · Executing · Managing</p></div>
 </div>
 
 <!-- ═══ SEARCHES ═══ -->
@@ -250,15 +250,15 @@ const t=new THREE.CanvasTexture(c);return t;}
 
 /* ── colored fog cloud behind the brain ── */
 const fog=new THREE.Group();S.add(fog);
-const fogCols=[[0,212,255],[140,60,255],[255,40,160],[0,255,170],[255,179,0],[60,120,255]];
+const fogCols=[[0,212,255],[150,60,255],[255,40,170],[0,255,170],[255,190,0],[60,110,255],[255,90,40],[200,0,255],[0,170,255],[255,0,90]];
 const fogParts=[];
-for(let i=0;i<26;i++){
+for(let i=0;i<36;i++){
  const c=fogCols[i%fogCols.length];
- const tex=glowTex([[0,`rgba(${c},.55)`],[.35,`rgba(${c},.22)`],[.7,`rgba(${c},.06)`],[1,'rgba(0,0,0,0)']]);
- const m=new THREE.SpriteMaterial({map:tex,transparent:true,depthWrite:false,blending:THREE.AdditiveBlending,opacity:.0});
+ const tex=glowTex([[0,`rgba(${c},.85)`],[.3,`rgba(${c},.38)`],[.65,`rgba(${c},.1)`],[1,'rgba(0,0,0,0)']]);
+ const m=new THREE.SpriteMaterial({map:tex,transparent:true,depthWrite:false,blending:THREE.AdditiveBlending,opacity:0});
  const sp=new THREE.Sprite(m);
- const r=1.6+Math.random()*2.4,a=Math.random()*Math.PI*2;
- sp.userData={r,a,y:(Math.random()-.5)*2.2,z:-1.5-Math.random()*2.5,spd:(.03+Math.random()*.06)*(Math.random()<.5?-1:1),sc:3+Math.random()*4,ph:Math.random()*6.28,op:.18+Math.random()*.22};
+ const r=2.1+Math.random()*3.6,a=Math.random()*Math.PI*2;
+ sp.userData={r,a,y:(Math.random()-.5)*3,z:-2.8-Math.random()*3.2,spd:(.04+Math.random()*.08)*(Math.random()<.5?-1:1),sc:3.2+Math.random()*4.8,ph:Math.random()*6.28,op:.14+Math.random()*.2};
  sp.scale.setScalar(sp.userData.sc);fog.add(sp);fogParts.push(sp);
 }
 /* fine dust drifting through the fog */
@@ -269,27 +269,54 @@ const dust=new THREE.Points(dG,new THREE.PointsMaterial({color:0x88ddff,size:.02
 
 /* ── brain surface (two folded hemispheres + cerebellum + stem) ── */
 const brain=new THREE.Group();brain.scale.setScalar(1.3);S.add(brain);
-function fold(x,y,z){ /* gyri/sulci: layered wavy ridges */
- return .07*Math.sin(9*x+4*Math.sin(3*z))*Math.cos(8*y+3*Math.sin(4*x))+.035*Math.sin(17*z+5*y)+.02*Math.sin(23*x-11*z);}
-const surf=[];
-function addLobe(cx,cy,cz,rx,ry,rz,n,side){
- for(let i=0;i<n;i++){
-  const u=Math.random()*2-1,th=Math.random()*Math.PI*2,s=Math.sqrt(1-u*u);
-  let x=s*Math.cos(th),y=u,z=s*Math.sin(th);
-  if(side&&x*side<-.55)continue;                 /* flatten the inner face for the midline gap */
-  if(y<-.55&&cz===0&&Math.abs(z)<.2)continue;
-  const k=1+fold(x+cx,y,z);
-  surf.push([cx+x*rx*k,cy+y*ry*k,cz+z*rz*k]);
+/* Signed fold field: >0 gyrus (ridge), <0 sulcus (groove). Two crossed wave sets
+   warped by each other give the meandering, maze-like look of a real cortex. */
+function fold(x,y,z){
+ const w1=Math.sin(7.5*z+2.6*Math.sin(5*y)+1.7*Math.sin(4*x));
+ const w2=Math.sin(8.5*y+2.4*Math.sin(6*z)-1.3*Math.cos(5*x));
+ return .6*w1+.4*w2;}
+const surf=[],ridge=[];
+/* one hemisphere: d = unit direction; side = -1 left / +1 right. Brain faces +z. */
+function hemi(side,n){
+ let made=0;
+ while(made<n){
+  const u=Math.random()*2-1,th=Math.random()*Math.PI*2,q=Math.sqrt(1-u*u);
+  let dx=q*Math.cos(th),dy=u,dz=q*Math.sin(th);
+  if(dx*side<-.25)continue;                                  /* medial wall stays open: longitudinal fissure */
+  /* lobe shaping */
+  let rx=.92,ry=.80,rz=1.32;
+  if(dy<0)ry*=.72;                                           /* flatter underside */
+  if(dz>.3)ry*=1-.12*(dz-.3);                                /* frontal lobe tapers a little */
+  if(dz<-.5){rx*=1-.25*(-dz-.5);ry*=1-.18*(-dz-.5);}        /* narrower occipital pole */
+  const temporal=Math.exp(-((dy+.45)**2)/.04-((dz-.15)**2)/.25)*(dx*side>.2?1:0);
+  rx*=1+.16*temporal;                                        /* temporal lobe bulges out low on the side */
+  /* Sylvian (lateral) fissure: a groove running back and up above the temporal lobe */
+  const syl=Math.abs(dy-(-.18+.35*(.2-dz)*.5));
+  if(dx*side>.45&&dz>-.35&&dz<.75&&syl<.045)continue;
+  /* central sulcus: groove from top down the side, separating frontal from parietal */
+  const cen=Math.abs(dz-(.05+.25*dy));
+  const f=fold(dx*1.1,dy,dz)-(cen<.04&&dy>-.1?1.4:0);
+  const k=1+.075*f;
+  const x=side*.47+dx*rx*k,y=.1+dy*ry*k,z=dz*rz*k;
+  surf.push([x,y,z]);ridge.push(f);made++;
  }}
-addLobe(-.58,.12,0,.95,.82,1.28,5200,-1);
-addLobe(.58,.12,0,.95,.82,1.28,5200,1);
-addLobe(0,-.62,-.86,.78,.38,.5,1500,0);           /* cerebellum */
-for(let i=0;i<260;i++){const a=Math.random()*6.28,h=Math.random();surf.push([Math.cos(a)*.17,-.55-h*.85,-.35+Math.sin(a)*.17]);} /* stem */
-
+hemi(-1,8200);hemi(1,8200);
+/* cerebellum: finely striped, tucked under the occipital lobes */
+for(let i=0;i<2600;i++){
+ const u=Math.random()*2-1,th=Math.random()*Math.PI*2,q=Math.sqrt(1-u*u);
+ const dx=q*Math.cos(th),dy=u,dz=q*Math.sin(th);
+ if(dz>.35&&dy>-.2)continue;
+ const f=Math.sin(26*dy+3*dz);const k=1+.04*f;
+ surf.push([dx*.82*k,-.5+dy*.36*k,-.95+dz*.5*k]);ridge.push(f);}
+/* brainstem */
+for(let i=0;i<500;i++){const a=Math.random()*6.28,h=Math.random(),r=.2-.06*h;surf.push([Math.cos(a)*r,-.45-h*1.0,-.3-h*.15+Math.sin(a)*r]);ridge.push(.3);}
 const sN=surf.length,sPos=new Float32Array(sN*3),sCol=new Float32Array(sN*3),sSize=new Float32Array(sN),sAlpha=new Float32Array(sN);
 const cA=new THREE.Color(0x00d4ff),cB=new THREE.Color(0x8a5cff),tmp=new THREE.Color();
-surf.forEach((p,i)=>{sPos.set(p,i*3);tmp.copy(cA).lerp(cB,(p[1]+1)/2*.8+Math.random()*.2);sCol.set([tmp.r,tmp.g,tmp.b],i*3);sSize[i]=1.2+Math.random()*1.6;sAlpha[i]=.25+Math.random()*.35;});
-
+surf.forEach((p,i)=>{sPos.set(p,i*3);
+ const f=ridge[i],g=Math.max(0,Math.min(1,(f+1)/2));         /* 0 = deep groove, 1 = ridge crest */
+ tmp.copy(cA).lerp(cB,Math.max(0,Math.min(1,(p[1]+.6)/1.4))*.85+Math.random()*.15);
+ sCol.set([tmp.r,tmp.g,tmp.b],i*3);
+ sSize[i]=.9+g*1.9+Math.random()*.5;sAlpha[i]=.06+g*g*.62;});
 const ptVS=`attribute float size;attribute float alpha;attribute vec3 color;varying vec3 vC;varying float vA;uniform float pr;
 void main(){vC=color;vA=alpha;vec4 mv=modelViewMatrix*vec4(position,1.);gl_PointSize=size*pr*(6./-mv.z);gl_Position=projectionMatrix*mv;}`;
 const ptFS=`varying vec3 vC;varying float vA;void main(){float d=length(gl_PointCoord-.5);if(d>.5)discard;float g=pow(1.-d*2.,1.8);gl_FragColor=vec4(vC*(.6+g),g*vA);}`;
@@ -299,7 +326,7 @@ brain.add(new THREE.Points(ptGeo(sPos,sCol,sSize,sAlpha),ptMat()));
 
 /* ── neurons (nodes) and synapses (edges) ── */
 const NN=320,nodes=[];
-for(let i=0;i<NN;i++){const p=surf[(Math.random()*(sN-260))|0];nodes.push(new THREE.Vector3(p[0]*.93,p[1]*.93,p[2]*.93));}
+while(nodes.length<NN){const k=(Math.random()*(sN-500))|0;if(ridge[k]<.2)continue;const p=surf[k];nodes.push(new THREE.Vector3(p[0]*.96,p[1]*.96,p[2]*.96));}
 const edges=[],adj=nodes.map(()=>[]);
 for(let i=0;i<NN;i++){
  const near=[];for(let j=0;j<NN;j++)if(j!==i){const d=nodes[i].distanceTo(nodes[j]);if(d<.75)near.push([d,j]);}
