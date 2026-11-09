@@ -234,50 +234,127 @@ a{color:var(--cyan);text-decoration:none}
 <div id="toasts"></div>
 
 <script>
-/* ═══ THREE.JS 3D DUMBBELL (no rings) ═══ */
+/* ═══ THREE.JS 3D BRAIN: firing neurons + drifting color fog ═══ */
 (function(){
 const C=document.getElementById('heroCanvas');
 const R=new THREE.WebGLRenderer({canvas:C,antialias:true,alpha:true});
-R.setPixelRatio(Math.min(devicePixelRatio,2));R.shadowMap.enabled=true;R.shadowMap.type=THREE.PCFSoftShadowMap;R.toneMapping=THREE.ACESFilmicToneMapping;R.toneMappingExposure=1.2;
-const S=new THREE.Scene();S.fog=new THREE.FogExp2(0x050810,.015);
-const cam=new THREE.PerspectiveCamera(45,1,.1,100);cam.position.set(0,.5,6);cam.lookAt(0,0,0);
-S.add(new THREE.AmbientLight(0x1a2a40,.6));
-const kl=new THREE.DirectionalLight(0xffffff,1.2);kl.position.set(3,4,5);kl.castShadow=true;kl.shadow.mapSize.set(1024,1024);S.add(kl);
-const fl=new THREE.DirectionalLight(0x4488cc,.4);fl.position.set(-3,1,-2);S.add(fl);
-const rl=new THREE.PointLight(0x00d4ff,.8,12);rl.position.set(0,2,-4);S.add(rl);
-const bl=new THREE.PointLight(0x0044aa,.3,8);bl.position.set(0,-3,0);S.add(bl);
-const mS=new THREE.MeshStandardMaterial({color:0x8899aa,metalness:.95,roughness:.25});
-const mD=new THREE.MeshStandardMaterial({color:0x2a3040,metalness:.9,roughness:.35});
-const mP=new THREE.MeshStandardMaterial({color:0x1e2535,metalness:.85,roughness:.4});
-const mG=new THREE.MeshStandardMaterial({color:0x556677,metalness:.7,roughness:.5});
-const mGl=new THREE.MeshPhysicalMaterial({color:0x88ccff,metalness:0,roughness:.05,transparent:true,opacity:.06,transmission:.9,thickness:.5,clearcoat:1,side:THREE.DoubleSide});
-const mR=new THREE.MeshStandardMaterial({color:0x00d4ff,metalness:.8,roughness:.3,emissive:0x004466,emissiveIntensity:.3});
-const db=new THREE.Group();
-const h=new THREE.Mesh(new THREE.CylinderGeometry(.18,.18,2.2,32),mS);h.rotation.z=Math.PI/2;h.castShadow=true;db.add(h);
-for(let i=-1;i<=1;i+=2){const g=new THREE.Mesh(new THREE.CylinderGeometry(.22,.22,.5,32),mG);g.rotation.z=Math.PI/2;g.position.x=i*.65;g.castShadow=true;db.add(g);}
-const pc=[{r:.85,hh:.25,o:1.35},{r:.70,hh:.22,o:1.60},{r:.55,hh:.20,o:1.80},{r:.40,hh:.18,o:1.95}];
-for(let s=-1;s<=1;s+=2){
-const cl=new THREE.Mesh(new THREE.CylinderGeometry(.28,.28,.12,32),mS);cl.rotation.z=Math.PI/2;cl.position.x=s*1.2;cl.castShadow=true;db.add(cl);
-pc.forEach(p=>{
-const pl=new THREE.Mesh(new THREE.CylinderGeometry(p.r,p.r,p.hh,48),mP);pl.rotation.z=Math.PI/2;pl.position.x=s*p.o;pl.castShadow=true;pl.receiveShadow=true;db.add(pl);
-const rg=new THREE.Mesh(new THREE.TorusGeometry(p.r*.98,.015,8,64),mR);rg.position.x=s*(p.o+(s>0?p.hh/2+.01:-p.hh/2-.01));rg.rotation.y=Math.PI/2;db.add(rg);});
-const ep=new THREE.Mesh(new THREE.CylinderGeometry(.3,.3,.08,32),mD);ep.rotation.z=Math.PI/2;ep.position.x=s*2.08;ep.castShadow=true;db.add(ep);
+R.setPixelRatio(Math.min(devicePixelRatio,2));
+const PR=R.getPixelRatio();
+const S=new THREE.Scene();
+const cam=new THREE.PerspectiveCamera(45,1,.1,100);cam.position.set(0,.3,6.2);cam.lookAt(0,0,0);
+
+/* soft round glow texture shared by fog sprites */
+function glowTex(stops){const c=document.createElement('canvas');c.width=c.height=256;const g=c.getContext('2d');
+const gr=g.createRadialGradient(128,128,0,128,128,128);stops.forEach(s=>gr.addColorStop(s[0],s[1]));g.fillStyle=gr;g.fillRect(0,0,256,256);
+const t=new THREE.CanvasTexture(c);return t;}
+
+/* ── colored fog cloud behind the brain ── */
+const fog=new THREE.Group();S.add(fog);
+const fogCols=[[0,212,255],[140,60,255],[255,40,160],[0,255,170],[255,179,0],[60,120,255]];
+const fogParts=[];
+for(let i=0;i<26;i++){
+ const c=fogCols[i%fogCols.length];
+ const tex=glowTex([[0,`rgba(${c},.55)`],[.35,`rgba(${c},.22)`],[.7,`rgba(${c},.06)`],[1,'rgba(0,0,0,0)']]);
+ const m=new THREE.SpriteMaterial({map:tex,transparent:true,depthWrite:false,blending:THREE.AdditiveBlending,opacity:.0});
+ const sp=new THREE.Sprite(m);
+ const r=1.6+Math.random()*2.4,a=Math.random()*Math.PI*2;
+ sp.userData={r,a,y:(Math.random()-.5)*2.2,z:-1.5-Math.random()*2.5,spd:(.03+Math.random()*.06)*(Math.random()<.5?-1:1),sc:3+Math.random()*4,ph:Math.random()*6.28,op:.18+Math.random()*.22};
+ sp.scale.setScalar(sp.userData.sc);fog.add(sp);fogParts.push(sp);
 }
-const lb=new THREE.Mesh(new THREE.BoxGeometry(.4,.2,.02),new THREE.MeshStandardMaterial({color:0x00d4ff,emissive:0x00aacc,emissiveIntensity:.5}));lb.position.set(0,0,.2);db.add(lb);
-db.position.y=.2;S.add(db);
-S.add(new THREE.Mesh(new THREE.SphereGeometry(2.8,64,64),mGl));
-const pN=200,pG2=new THREE.BufferGeometry(),pP=new Float32Array(pN*3);
-for(let i=0;i<pN;i++){pP[i*3]=(Math.random()-.5)*14;pP[i*3+1]=(Math.random()-.5)*10;pP[i*3+2]=(Math.random()-.5)*14;}
-pG2.setAttribute('position',new THREE.BufferAttribute(pP,3));
-S.add(new THREE.Points(pG2,new THREE.PointsMaterial({color:0x00d4ff,size:.03,transparent:true,opacity:.5})));
-const gn=new THREE.Mesh(new THREE.PlaneGeometry(20,20),new THREE.MeshStandardMaterial({color:0x080c14,metalness:.3,roughness:.8}));gn.rotation.x=-Math.PI/2;gn.position.y=-2.5;gn.receiveShadow=true;S.add(gn);
-let mx=0,my=0;document.addEventListener('mousemove',e=>{mx=(e.clientX/innerWidth-.5)*.3;my=(e.clientY/innerHeight-.5)*-.2;});
-const ck=new THREE.Clock();
-(function anim(){requestAnimationFrame(anim);const t=ck.getElapsedTime();
-db.rotation.y=t*.6;db.rotation.x=Math.sin(t*.4)*.08;db.position.y=.2+Math.sin(t*.8)*.12;
-cam.position.x=mx*1.5;cam.position.y=.5+my;cam.lookAt(0,0,0);rl.intensity=.6+Math.sin(t*2)*.3;
-R.render(S,cam);})();
-function rs(){const w=C.clientWidth,h=C.clientHeight;if(C.width!==w||C.height!==h){R.setSize(w,h,false);cam.aspect=w/h;cam.updateProjectionMatrix();}}
+/* fine dust drifting through the fog */
+const dN=420,dG=new THREE.BufferGeometry(),dP=new Float32Array(dN*3);
+for(let i=0;i<dN;i++){dP[i*3]=(Math.random()-.5)*14;dP[i*3+1]=(Math.random()-.5)*7;dP[i*3+2]=-4+Math.random()*6;}
+dG.setAttribute('position',new THREE.BufferAttribute(dP,3));
+const dust=new THREE.Points(dG,new THREE.PointsMaterial({color:0x88ddff,size:.025,transparent:true,opacity:.45,depthWrite:false,blending:THREE.AdditiveBlending}));S.add(dust);
+
+/* ── brain surface (two folded hemispheres + cerebellum + stem) ── */
+const brain=new THREE.Group();brain.scale.setScalar(1.3);S.add(brain);
+function fold(x,y,z){ /* gyri/sulci: layered wavy ridges */
+ return .07*Math.sin(9*x+4*Math.sin(3*z))*Math.cos(8*y+3*Math.sin(4*x))+.035*Math.sin(17*z+5*y)+.02*Math.sin(23*x-11*z);}
+const surf=[];
+function addLobe(cx,cy,cz,rx,ry,rz,n,side){
+ for(let i=0;i<n;i++){
+  const u=Math.random()*2-1,th=Math.random()*Math.PI*2,s=Math.sqrt(1-u*u);
+  let x=s*Math.cos(th),y=u,z=s*Math.sin(th);
+  if(side&&x*side<-.55)continue;                 /* flatten the inner face for the midline gap */
+  if(y<-.55&&cz===0&&Math.abs(z)<.2)continue;
+  const k=1+fold(x+cx,y,z);
+  surf.push([cx+x*rx*k,cy+y*ry*k,cz+z*rz*k]);
+ }}
+addLobe(-.58,.12,0,.95,.82,1.28,5200,-1);
+addLobe(.58,.12,0,.95,.82,1.28,5200,1);
+addLobe(0,-.62,-.86,.78,.38,.5,1500,0);           /* cerebellum */
+for(let i=0;i<260;i++){const a=Math.random()*6.28,h=Math.random();surf.push([Math.cos(a)*.17,-.55-h*.85,-.35+Math.sin(a)*.17]);} /* stem */
+
+const sN=surf.length,sPos=new Float32Array(sN*3),sCol=new Float32Array(sN*3),sSize=new Float32Array(sN),sAlpha=new Float32Array(sN);
+const cA=new THREE.Color(0x00d4ff),cB=new THREE.Color(0x8a5cff),tmp=new THREE.Color();
+surf.forEach((p,i)=>{sPos.set(p,i*3);tmp.copy(cA).lerp(cB,(p[1]+1)/2*.8+Math.random()*.2);sCol.set([tmp.r,tmp.g,tmp.b],i*3);sSize[i]=1.2+Math.random()*1.6;sAlpha[i]=.25+Math.random()*.35;});
+
+const ptVS=`attribute float size;attribute float alpha;attribute vec3 color;varying vec3 vC;varying float vA;uniform float pr;
+void main(){vC=color;vA=alpha;vec4 mv=modelViewMatrix*vec4(position,1.);gl_PointSize=size*pr*(6./-mv.z);gl_Position=projectionMatrix*mv;}`;
+const ptFS=`varying vec3 vC;varying float vA;void main(){float d=length(gl_PointCoord-.5);if(d>.5)discard;float g=pow(1.-d*2.,1.8);gl_FragColor=vec4(vC*(.6+g),g*vA);}`;
+function ptMat(){return new THREE.ShaderMaterial({uniforms:{pr:{value:PR}},vertexShader:ptVS,fragmentShader:ptFS,transparent:true,depthWrite:false,blending:THREE.AdditiveBlending});}
+function ptGeo(pos,col,size,alpha){const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.BufferAttribute(pos,3));g.setAttribute('color',new THREE.BufferAttribute(col,3));g.setAttribute('size',new THREE.BufferAttribute(size,1));g.setAttribute('alpha',new THREE.BufferAttribute(alpha,1));return g;}
+brain.add(new THREE.Points(ptGeo(sPos,sCol,sSize,sAlpha),ptMat()));
+
+/* ── neurons (nodes) and synapses (edges) ── */
+const NN=320,nodes=[];
+for(let i=0;i<NN;i++){const p=surf[(Math.random()*(sN-260))|0];nodes.push(new THREE.Vector3(p[0]*.93,p[1]*.93,p[2]*.93));}
+const edges=[],adj=nodes.map(()=>[]);
+for(let i=0;i<NN;i++){
+ const near=[];for(let j=0;j<NN;j++)if(j!==i){const d=nodes[i].distanceTo(nodes[j]);if(d<.75)near.push([d,j]);}
+ near.sort((a,b)=>a[0]-b[0]).slice(0,3).forEach(([,j])=>{if(i<j||!adj[j].some(e=>edges[e].b===i)){const e=edges.length;edges.push({a:i,b:j,glow:0});adj[i].push(e);adj[j].push(e);}});
+}
+const eN=edges.length,ePos=new Float32Array(eN*6),eCol=new Float32Array(eN*6);
+edges.forEach((e,k)=>{ePos.set([nodes[e.a].x,nodes[e.a].y,nodes[e.a].z,nodes[e.b].x,nodes[e.b].y,nodes[e.b].z],k*6);});
+const eG=new THREE.BufferGeometry();eG.setAttribute('position',new THREE.BufferAttribute(ePos,3));eG.setAttribute('color',new THREE.BufferAttribute(eCol,3));
+brain.add(new THREE.LineSegments(eG,new THREE.LineBasicMaterial({vertexColors:true,transparent:true,opacity:.9,depthWrite:false,blending:THREE.AdditiveBlending})));
+
+const nPos=new Float32Array(NN*3),nCol=new Float32Array(NN*3),nSize=new Float32Array(NN),nAlpha=new Float32Array(NN),nGlow=new Float32Array(NN);
+nodes.forEach((v,i)=>{nPos.set([v.x,v.y,v.z],i*3);});
+const nG=ptGeo(nPos,nCol,nSize,nAlpha);brain.add(new THREE.Points(nG,ptMat()));
+
+/* travelling impulses */
+const PMAX=160,pPos=new Float32Array(PMAX*3),pCol=new Float32Array(PMAX*3),pSize=new Float32Array(PMAX),pAlpha=new Float32Array(PMAX);
+const pG=ptGeo(pPos,pCol,pSize,pAlpha);brain.add(new THREE.Points(pG,ptMat()));
+const pulses=[];
+const fireCols=[new THREE.Color(0x00ffff),new THREE.Color(0xff3cc8),new THREE.Color(0xffd23f),new THREE.Color(0x7cff6b),new THREE.Color(0xb48cff)];
+function fire(n,col,depth){
+ nGlow[n]=1;
+ adj[n].forEach(e=>{if(pulses.length<PMAX&&Math.random()<(depth?.55:.9)){const ed=edges[e];pulses.push({e,from:n,to:ed.a===n?ed.b:ed.a,t:0,spd:.9+Math.random()*1.4,col,depth});}});
+}
+
+let mx=0,my=0;document.addEventListener('mousemove',e=>{mx=(e.clientX/innerWidth-.5)*.4;my=(e.clientY/innerHeight-.5)*-.25;});
+const ck=new THREE.Clock();let last=0,nextFire=0;
+(function anim(){requestAnimationFrame(anim);
+ const t=ck.getElapsedTime(),dt=Math.min(t-last,.05);last=t;
+ brain.rotation.y=t*.18;brain.rotation.x=-.12+Math.sin(t*.35)*.06;brain.position.y=.15+Math.sin(t*.7)*.08;
+
+ /* spontaneous firing */
+ if(t>nextFire){fire((Math.random()*NN)|0,fireCols[(Math.random()*fireCols.length)|0],0);nextFire=t+.12+Math.random()*.35;}
+ /* advance impulses */
+ for(let i=pulses.length-1;i>=0;i--){const p=pulses[i];p.t+=dt*p.spd;edges[p.e].glow=1;
+  if(p.t>=1){pulses.splice(i,1);if(p.depth<3)fire(p.to,p.col,p.depth+1);else nGlow[p.to]=1;}}
+ for(let i=0;i<PMAX;i++){const p=pulses[i];
+  if(p){const A=nodes[p.from],B=nodes[p.to];pPos[i*3]=A.x+(B.x-A.x)*p.t;pPos[i*3+1]=A.y+(B.y-A.y)*p.t;pPos[i*3+2]=A.z+(B.z-A.z)*p.t;pCol[i*3]=p.col.r;pCol[i*3+1]=p.col.g;pCol[i*3+2]=p.col.b;pSize[i]=7;pAlpha[i]=1;}
+  else{pAlpha[i]=0;pSize[i]=0;}}
+ pG.attributes.position.needsUpdate=pG.attributes.color.needsUpdate=pG.attributes.size.needsUpdate=pG.attributes.alpha.needsUpdate=true;
+ /* node flashes decay */
+ for(let i=0;i<NN;i++){nGlow[i]*=.93;const g=nGlow[i];nCol[i*3]=.2+g*.8;nCol[i*3+1]=.75+g*.25;nCol[i*3+2]=1;nSize[i]=3+g*9;nAlpha[i]=.35+g*.65;}
+ nG.attributes.color.needsUpdate=nG.attributes.size.needsUpdate=nG.attributes.alpha.needsUpdate=true;
+ /* synapse glow decay */
+ for(let k=0;k<eN;k++){const e=edges[k];e.glow*=.95;const b=.05+e.glow*.75;for(let v=0;v<2;v++){eCol[k*6+v*3]=b*.3;eCol[k*6+v*3+1]=b*.85;eCol[k*6+v*3+2]=b;}}
+ eG.attributes.color.needsUpdate=true;
+
+ /* fog drift */
+ fogParts.forEach(sp=>{const u=sp.userData;u.a+=u.spd*dt;sp.position.set(Math.cos(u.a)*u.r,u.y+Math.sin(t*.25+u.ph)*.4,u.z);
+  sp.material.opacity=u.op*(.75+.25*Math.sin(t*.5+u.ph));sp.material.rotation+=dt*.05;sp.scale.setScalar(u.sc*(1+.08*Math.sin(t*.3+u.ph)));});
+ fog.rotation.z=Math.sin(t*.05)*.2;
+ dust.rotation.y=t*.02;dust.position.y=Math.sin(t*.2)*.15;
+
+ cam.position.x=mx*1.6;cam.position.y=.3+my;cam.lookAt(0,0,0);
+ R.render(S,cam);})();
+function rs(){const w=C.clientWidth,h=C.clientHeight;if(C.width!==w*PR||C.height!==h*PR){R.setSize(w,h,false);cam.aspect=w/h;cam.updateProjectionMatrix();}}
 window.addEventListener('resize',rs);rs();
 })();
 
