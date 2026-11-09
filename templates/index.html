@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
 <title>FBF Command Center</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="/static/neural-scene.js"></script>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 :root{--bg:#050810;--panel:rgba(10,16,30,.78);--border:rgba(0,200,255,.08);--cyan:#00d4ff;--green:#00ff88;--red:#ff4466;--amber:#ffb300;--text:#c0d0e0;--dim:#3a5068;--font:'Segoe UI',system-ui,sans-serif;--mono:'Cascadia Code','Consolas',monospace}
@@ -93,6 +94,65 @@ a{color:var(--cyan);text-decoration:none}
 .toast.ok{border-color:var(--green);color:var(--green)}.toast.err{border-color:var(--red);color:var(--red)}
 @keyframes ti{from{opacity:0;transform:translateX(20px)}to{opacity:1;transform:none}}
 @media(max-width:900px){.searches,.pgrid{grid-template-columns:1fr}.hero{height:280px}}
+/* ── 3D command dock ── */
+.dock{perspective:1600px;margin:0 0 1.6rem}
+.dock-sec{margin-bottom:1.1rem}
+.dock-sec h4{font-size:.68rem;letter-spacing:.32em;text-transform:uppercase;color:rgba(var(--acc),.9);margin:0 0 .55rem .2rem;font-weight:700;display:flex;align-items:center;gap:.6rem}
+.dock-sec h4::after{content:"";flex:1;height:1px;background:linear-gradient(90deg,rgba(var(--acc),.45),transparent)}
+.tiles{display:grid;grid-template-columns:repeat(auto-fill,minmax(158px,1fr));gap:.85rem}
+.tile{--rx:0deg;--ry:0deg;--mx:50%;--my:50%;position:relative;height:112px;border-radius:16px;padding:.85rem .95rem;display:flex;flex-direction:column;justify-content:flex-end;gap:.15rem;
+ background:linear-gradient(150deg,rgba(22,34,62,.92),rgba(7,11,24,.95));border:1px solid rgba(var(--acc),.16);
+ box-shadow:0 14px 34px rgba(0,0,0,.5),inset 0 1px 0 rgba(255,255,255,.07),inset 0 -20px 40px rgba(var(--acc),.04);
+ transform:rotateX(var(--rx)) rotateY(var(--ry)) translateZ(0);transform-style:preserve-3d;transition:transform .18s ease-out,box-shadow .25s,border-color .25s;cursor:pointer;overflow:hidden;user-select:none}
+.tile::before{content:"";position:absolute;inset:0;background:radial-gradient(240px circle at var(--mx) var(--my),rgba(var(--acc),.22),transparent 45%);opacity:0;transition:opacity .25s;pointer-events:none}
+.tile::after{content:"";position:absolute;left:-30%;top:-120%;width:60%;height:300%;background:linear-gradient(90deg,transparent,rgba(255,255,255,.06),transparent);transform:rotate(25deg);transition:left .6s;pointer-events:none}
+.tile:hover{border-color:rgba(var(--acc),.5);box-shadow:0 22px 50px rgba(0,0,0,.6),0 0 26px rgba(var(--acc),.18),inset 0 1px 0 rgba(255,255,255,.1)}
+.tile:hover::before{opacity:1}.tile:hover::after{left:120%}
+.tile .ic{position:absolute;top:.7rem;left:.9rem;font-size:1.65rem;filter:drop-shadow(0 4px 10px rgba(var(--acc),.45));transform:translateZ(40px)}
+.tile .tt{font-weight:700;font-size:.86rem;color:#eef6ff;letter-spacing:.02em;transform:translateZ(26px)}
+.tile .st{font-family:var(--mono);font-size:.68rem;color:var(--dim);transform:translateZ(18px);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tile.on{border-color:rgba(var(--acc),.85);box-shadow:0 0 0 1px rgba(var(--acc),.6),0 0 34px rgba(var(--acc),.28),0 18px 40px rgba(0,0,0,.55)}
+.tile.on .tt{color:rgb(var(--acc))}
+.tile .ext{position:absolute;top:.6rem;right:.7rem;font-size:.7rem;color:rgba(var(--acc),.7);transform:translateZ(30px)}
+.tile .edit{position:absolute;bottom:.55rem;right:.6rem;font-size:.7rem;opacity:0;color:var(--dim);transition:opacity .2s;transform:translateZ(30px)}
+.tile:hover .edit{opacity:.8}.tile .edit:hover{color:#fff}
+.tile.hot{background:linear-gradient(150deg,rgba(60,40,10,.75),rgba(10,10,22,.95));border-color:rgba(var(--acc),.45)}
+.tile.hot .ic{animation:pulse 2.4s ease-in-out infinite}
+@keyframes pulse{0%,100%{filter:drop-shadow(0 0 6px rgba(212,169,58,.5))}50%{filter:drop-shadow(0 0 18px rgba(212,169,58,.95))}}
+.st .up{color:var(--green)}.st .dn{color:var(--red)}
+/* ── AI Coach ── */
+.coach-wrap{position:relative;border-radius:18px;overflow:hidden;border:1px solid rgba(212,169,58,.25);background:#03060d;min-height:72vh}
+.coach-bg{position:absolute;inset:0;width:100%;height:100%;opacity:.55;pointer-events:none}
+.coach-inner{position:relative;z-index:1;display:flex;flex-direction:column;height:72vh;padding:1.2rem 1.4rem;gap:.9rem}
+.coach-head{display:flex;justify-content:space-between;align-items:flex-start}
+.coach-eyebrow{font-size:.62rem;letter-spacing:.3em;color:#D4A93A;font-weight:700}
+.coach-head h3{font-size:1.5rem;font-weight:800;color:#fff;letter-spacing:.04em;text-shadow:0 0 18px rgba(0,212,255,.4)}
+.coach-sub{font-size:.75rem;color:var(--dim)}
+.coach-thread{flex:1;overflow-y:auto;display:flex;flex-direction:column;gap:.7rem;padding-right:.3rem}
+.msg{max-width:78%;padding:.8rem 1rem;border-radius:14px;font-size:.88rem;line-height:1.55;backdrop-filter:blur(10px)}
+.msg.me{align-self:flex-end;background:rgba(212,169,58,.16);border:1px solid rgba(212,169,58,.35);color:#fff3d6}
+.msg.ai{align-self:flex-start;background:rgba(8,16,32,.78);border:1px solid rgba(0,212,255,.18);color:#dbe7f5}
+.msg .src{margin-top:.5rem;font-size:.7rem;color:var(--dim)}
+.msg.ai strong{color:#fff}
+/* the input is the focal point: glowing animated border */
+.ask-shell{position:relative;display:flex;gap:.6rem;align-items:flex-end;padding:3px;border-radius:18px;
+ background:conic-gradient(from var(--ang,0deg),#00d4ff,#9a5cff,#ff3cc8,#D4A93A,#00ffaa,#00d4ff);animation:spin 6s linear infinite;
+ box-shadow:0 0 28px rgba(0,212,255,.35),0 0 60px rgba(154,92,255,.25)}
+@property --ang{syntax:'<angle>';inherits:false;initial-value:0deg}
+@keyframes spin{to{--ang:360deg}}
+.ask-shell textarea{flex:1;resize:none;border:0;outline:0;border-radius:15px;padding:1rem 1.1rem;background:#060b17;color:#fff;font-size:1rem;font-family:var(--font);min-height:58px;max-height:180px}
+.ask-shell textarea::placeholder{color:#7f93b0}
+.ask-shell:focus-within{box-shadow:0 0 36px rgba(0,212,255,.6),0 0 90px rgba(154,92,255,.4)}
+.ask-go{border:0;border-radius:14px;margin:6px;padding:.85rem 1.3rem;font-weight:800;letter-spacing:.06em;cursor:pointer;color:#0a0a0a;background:linear-gradient(135deg,#ffd76a,#D4A93A);box-shadow:0 6px 20px rgba(212,169,58,.45)}
+.ask-go:disabled{opacity:.5;cursor:wait}
+.coach-chips{display:flex;flex-wrap:wrap;gap:.4rem}
+.chip{font-size:.72rem;padding:.35rem .7rem;border-radius:20px;border:1px solid rgba(0,212,255,.25);color:#bfe9ff;background:rgba(0,212,255,.06);cursor:pointer}
+.chip:hover,.chip.on{background:rgba(0,212,255,.18);color:#fff}
+.pep{padding:.75rem .9rem;border-radius:10px;background:rgba(255,255,255,.02);border:1px solid rgba(255,255,255,.05);margin-bottom:.5rem}
+.pep a{color:#e8f4ff;font-weight:600;font-size:.86rem}
+.pep .meta{font-size:.7rem;color:var(--dim);margin-top:.25rem}
+.pep .tag{display:inline-block;font-size:.62rem;padding:.1rem .45rem;border-radius:8px;background:rgba(154,92,255,.15);color:#cdb8ff;margin-right:.3rem}
+.pep .new{background:rgba(0,255,136,.15);color:var(--green)}
 </style>
 </head>
 <body>
@@ -103,14 +163,6 @@ a{color:var(--cyan);text-decoration:none}
 <div class="hdr-left">
 <span class="hdr-logo">🛡️</span>
 <h1>FBF Command Center</h1>
-</div>
-<div class="hdr-links">
-<a href="https://app.forgedbyfreedom.org" target="_blank">⚡ Coaches</a>
-<a href="https://@BalanceNomad" target="_blank">✈️ Telegram</a>
-<a href="https://wa.me/17757418213" target="_blank">💬 WhatsApp</a>
-<a href="https://calendly.com/forgedbyfreedom" target="_blank">📅 Calendar</a>
-<a href="mailto:forgedbyfreedom@gmail.com">📧 Gmail</a>
-<a href="mailto:forgedbyfreedom@proton.me">🔒 Proton</a>
 </div>
 <div class="hdr-r">
 <span class="clk" id="clk">--:--:--</span>
@@ -132,16 +184,57 @@ a{color:var(--cyan);text-decoration:none}
 <div class="sbox"><input id="sGoogle" placeholder="Web search..."/><button onclick="gSearch()">GOOGLE</button></div>
 </div>
 
-<!-- ═══ TABS ═══ -->
-<div class="tabs">
-<button class="tbtn on" data-t="dashboard">Dashboard</button>
-<button class="tbtn" data-t="dryrun">Dry Run &amp; Fees</button>
-<button class="tbtn" data-t="autotrade">Auto-Trade</button>
-<button class="tbtn" data-t="advisory">Advisory</button>
-<button class="tbtn" data-t="signals">Signals</button>
-<button class="tbtn" data-t="portfolio">Portfolio</button>
-<button class="tbtn" data-t="backtest">Backtest</button>
-<button class="tbtn" data-t="audit">Audit</button>
+<!-- ═══ COMMAND DOCK (3D tiles) ═══ -->
+<div class="dock" id="dock">
+ <div class="dock-sec" style="--acc:0,212,255">
+  <h4>Trading</h4>
+  <div class="tiles">
+   <div class="tile on" data-t="dashboard"><span class="ic">🛰️</span><span class="tt">Overview</span><span class="st" data-s="overview">Signals &amp; sentiment</span></div>
+   <div class="tile" data-t="stocks"><span class="ic">📈</span><span class="tt">Stock Trading</span><span class="st" data-s="stocks">—</span></div>
+   <div class="tile" data-t="crypto"><span class="ic">₿</span><span class="tt">Crypto Trading</span><span class="st" data-s="crypto">—</span></div>
+   <div class="tile" data-t="dryrun"><span class="ic">🧪</span><span class="tt">Dry Run &amp; Fees</span><span class="st" data-s="dryrun">—</span></div>
+   <div class="tile" data-t="autotrade"><span class="ic">⚙️</span><span class="tt">Auto-Trade</span><span class="st" data-s="autotrade">Engine</span></div>
+   <div class="tile" data-t="signals"><span class="ic">📡</span><span class="tt">Signals</span><span class="st">All assets</span></div>
+   <div class="tile" data-t="advisory"><span class="ic">🧭</span><span class="tt">Advisory</span><span class="st">Today's read</span></div>
+   <div class="tile" data-t="portfolio"><span class="ic">💼</span><span class="tt">Portfolio</span><span class="st">Brokers</span></div>
+   <div class="tile" data-t="backtest"><span class="ic">⏱️</span><span class="tt">Backtest</span><span class="st">Test a symbol</span></div>
+   <div class="tile" data-t="audit"><span class="ic">🧾</span><span class="tt">Audit Log</span><span class="st">Every order</span></div>
+  </div>
+ </div>
+ <div class="dock-sec" style="--acc:212,169,58">
+  <h4>Forged by Freedom</h4>
+  <div class="tiles">
+   <div class="tile hot" data-t="coach"><span class="ic">🧠</span><span class="tt">AI Coach</span><span class="st" data-s="coach">Private · ask anything</span></div>
+   <div class="tile" data-t="peptides"><span class="ic">🧬</span><span class="tt">Peptide Research</span><span class="st" data-s="peptides">Daily PubMed feed</span></div>
+   <div class="tile" data-t="sports"><span class="ic">🏈</span><span class="tt">Sports Board</span><span class="st">NFL · NCAAF picks</span></div>
+   <div class="tile" data-l="coaching"><span class="ic">🏋️</span><span class="tt">Coaching Dashboard</span><span class="st">app.forgedbyfreedom.org</span></div>
+   <div class="tile" data-l="website"><span class="ic">🛡️</span><span class="tt">FBF Website</span><span class="st">forgedbyfreedom.net</span></div>
+   <div class="tile" data-l="ezform"><span class="ic">🧾</span><span class="tt">EZForm</span><span class="st">Peptide catalog</span></div>
+   <div class="tile" data-l="ezedit"><span class="ic">🛠️</span><span class="tt">EZForm Builder</span><span class="st">Edit catalog</span></div>
+   <div class="tile" data-l="store"><span class="ic">👕</span><span class="tt">Merch Store</span><span class="st">Etsy · Printify</span></div>
+   <div class="tile" data-l="editsuite"><span class="ic">🎬</span><span class="tt">Edit Suite</span><span class="st">Video renders · live</span></div>
+   <div class="tile" data-l="wpadmin"><span class="ic">🔧</span><span class="tt">WP Admin</span><span class="st">Site backend</span></div>
+   <div class="tile" data-x="aihealth"><span class="ic">🩺</span><span class="tt">AI Server</span><span class="st" data-s="aihealth">checking…</span></div>
+  </div>
+ </div>
+ <div class="dock-sec" style="--acc:0,255,150">
+  <h4>Money</h4>
+  <div class="tiles">
+   <div class="tile" data-l="venmo"><span class="ic">💸</span><span class="tt">Venmo</span><span class="st">Payments</span></div>
+   <div class="tile" data-l="cashapp"><span class="ic">💵</span><span class="tt">Cash App</span><span class="st">Payments</span></div>
+  </div>
+ </div>
+ <div class="dock-sec" style="--acc:180,140,255">
+  <h4>Comms</h4>
+  <div class="tiles">
+   <div class="tile" data-l="gmail"><span class="ic">📧</span><span class="tt">Gmail</span><span class="st">Inbox</span></div>
+   <div class="tile" data-l="proton"><span class="ic">🔒</span><span class="tt">Proton</span><span class="st">Secure mail</span></div>
+   <div class="tile" data-l="calendar"><span class="ic">📅</span><span class="tt">Calendar</span><span class="st">Calendly</span></div>
+   <div class="tile" data-l="whatsapp"><span class="ic">💬</span><span class="tt">WhatsApp</span><span class="st">Chat</span></div>
+   <div class="tile" data-l="telegram"><span class="ic">✈️</span><span class="tt">Telegram</span><span class="st">Chat</span></div>
+   <div class="tile" data-l="github"><span class="ic">🐙</span><span class="tt">GitHub</span><span class="st">Repos</span></div>
+  </div>
+ </div>
 </div>
 
 <!-- ═══ DASHBOARD ═══ -->
@@ -218,6 +311,51 @@ a{color:var(--cyan);text-decoration:none}
 <div class="panel full"><div class="phead"><h3>Audit Log</h3></div><div class="pbody" id="aOut">Loading…</div></div>
 </div>
 
+<!-- ═══ STOCKS ═══ -->
+<div id="p-stocks" style="display:none">
+<div class="stats" id="stStats" style="margin-bottom:1rem"></div>
+<div class="pgrid">
+<div class="panel"><div class="phead"><h3>Stock Signals</h3><button class="btn btn-ghost" onclick="loadMarket('stock')">⟳ Refresh</button></div><div class="pbody" id="stSigs">Loading…</div></div>
+<div class="panel"><div class="phead"><h3>Dry-Run Positions &amp; Trades</h3></div><div class="pbody" id="stPos">Loading…</div></div>
+</div></div>
+
+<!-- ═══ CRYPTO ═══ -->
+<div id="p-crypto" style="display:none">
+<div class="stats" id="crStats" style="margin-bottom:1rem"></div>
+<div class="pgrid">
+<div class="panel"><div class="phead"><h3>Crypto Signals</h3><button class="btn btn-ghost" onclick="loadMarket('crypto')">⟳ Refresh</button></div><div class="pbody" id="crSigs">Loading…</div></div>
+<div class="panel"><div class="phead"><h3>Dry-Run Positions &amp; Trades</h3></div><div class="pbody" id="crPos">Loading…</div></div>
+</div></div>
+
+<!-- ═══ AI COACH (private) ═══ -->
+<div id="p-coach" style="display:none">
+<div class="coach-wrap">
+ <canvas id="coachCanvas" class="coach-bg"></canvas>
+ <div class="coach-inner">
+  <div class="coach-head"><div><div class="coach-eyebrow">PRIVATE · BRYAN ONLY</div><h3>FBF AI Coach</h3>
+   <div class="coach-sub" id="coachHealth">Grounded in the FBF research library</div></div>
+   <button class="btn btn-ghost" onclick="coachClear()">New chat</button></div>
+  <div class="coach-thread" id="coachThread"></div>
+  <div class="ask-shell" id="askShell">
+   <textarea id="coachQ" rows="2" placeholder="Ask the FBF AI Coach: training, nutrition, peptides, bloodwork, protocols…"></textarea>
+   <button class="ask-go" id="coachGo" onclick="coachSend()">Ask ➜</button>
+  </div>
+  <div class="coach-chips" id="coachChips"></div>
+ </div>
+</div></div>
+
+<!-- ═══ PEPTIDE RESEARCH ═══ -->
+<div id="p-peptides" style="display:none">
+<div class="panel full"><div class="phead"><h3>Peptide Research · new on PubMed (last 7 days)</h3><button class="btn btn-ghost" onclick="loadPeptides(true)">⟳ Refresh now</button></div>
+<div class="pbody"><div id="pepMeta" style="font-size:.75rem;color:var(--dim);margin-bottom:.6rem"></div><div id="pepChips" class="coach-chips" style="margin-bottom:.8rem"></div><div id="pepList">Loading…</div></div></div>
+</div>
+
+<!-- ═══ SPORTS ═══ -->
+<div id="p-sports" style="display:none">
+<div class="panel full"><div class="phead"><h3>FBF Sports Board</h3><a class="btn btn-ghost" id="sportsOpen" target="_blank">Open full page ↗</a></div>
+<div class="pbody" style="padding:0"><iframe id="sportsFrame" title="FBF Sports Board" style="width:100%;height:78vh;border:0;background:#050810"></iframe></div></div>
+</div>
+
 </div><!-- end .wrap -->
 
 <!-- ═══ TRADE MODAL ═══ -->
@@ -234,173 +372,41 @@ a{color:var(--cyan);text-decoration:none}
 <div id="toasts"></div>
 
 <script>
-/* ═══ THREE.JS 3D BRAIN: firing neurons + drifting color fog ═══ */
-(function(){
-const C=document.getElementById('heroCanvas');
-const R=new THREE.WebGLRenderer({canvas:C,antialias:true,alpha:true});
-R.setPixelRatio(Math.min(devicePixelRatio,2));
-const PR=R.getPixelRatio();
-const S=new THREE.Scene();
-const cam=new THREE.PerspectiveCamera(45,1,.1,100);cam.position.set(0,.3,6.2);cam.lookAt(0,0,0);
-
-/* soft round glow texture shared by fog sprites */
-function glowTex(stops){const c=document.createElement('canvas');c.width=c.height=256;const g=c.getContext('2d');
-const gr=g.createRadialGradient(128,128,0,128,128,128);stops.forEach(s=>gr.addColorStop(s[0],s[1]));g.fillStyle=gr;g.fillRect(0,0,256,256);
-const t=new THREE.CanvasTexture(c);return t;}
-
-/* ── colored fog cloud behind the brain ── */
-const fog=new THREE.Group();S.add(fog);
-const fogCols=[[0,212,255],[150,60,255],[255,40,170],[0,255,170],[255,190,0],[60,110,255],[255,90,40],[200,0,255],[0,170,255],[255,0,90]];
-const fogParts=[];
-for(let i=0;i<36;i++){
- const c=fogCols[i%fogCols.length];
- const tex=glowTex([[0,`rgba(${c},.85)`],[.3,`rgba(${c},.38)`],[.65,`rgba(${c},.1)`],[1,'rgba(0,0,0,0)']]);
- const m=new THREE.SpriteMaterial({map:tex,transparent:true,depthWrite:false,blending:THREE.AdditiveBlending,opacity:0});
- const sp=new THREE.Sprite(m);
- const r=2.1+Math.random()*3.6,a=Math.random()*Math.PI*2;
- sp.userData={r,a,y:(Math.random()-.5)*3,z:-2.8-Math.random()*3.2,spd:(.04+Math.random()*.08)*(Math.random()<.5?-1:1),sc:3.2+Math.random()*4.8,ph:Math.random()*6.28,op:.14+Math.random()*.2};
- sp.scale.setScalar(sp.userData.sc);fog.add(sp);fogParts.push(sp);
-}
-/* fine dust drifting through the fog */
-const dN=420,dG=new THREE.BufferGeometry(),dP=new Float32Array(dN*3);
-for(let i=0;i<dN;i++){dP[i*3]=(Math.random()-.5)*14;dP[i*3+1]=(Math.random()-.5)*7;dP[i*3+2]=-4+Math.random()*6;}
-dG.setAttribute('position',new THREE.BufferAttribute(dP,3));
-const dust=new THREE.Points(dG,new THREE.PointsMaterial({color:0x88ddff,size:.025,transparent:true,opacity:.45,depthWrite:false,blending:THREE.AdditiveBlending}));S.add(dust);
-
-/* ── brain surface (two folded hemispheres + cerebellum + stem) ── */
-const brain=new THREE.Group();brain.scale.setScalar(1.3);S.add(brain);
-/* Signed fold field: >0 gyrus (ridge), <0 sulcus (groove). Two crossed wave sets
-   warped by each other give the meandering, maze-like look of a real cortex. */
-function fold(x,y,z){
- const w1=Math.sin(7.5*z+2.6*Math.sin(5*y)+1.7*Math.sin(4*x));
- const w2=Math.sin(8.5*y+2.4*Math.sin(6*z)-1.3*Math.cos(5*x));
- return .6*w1+.4*w2;}
-const surf=[],ridge=[];
-/* one hemisphere: d = unit direction; side = -1 left / +1 right. Brain faces +z. */
-function hemi(side,n){
- let made=0;
- while(made<n){
-  const u=Math.random()*2-1,th=Math.random()*Math.PI*2,q=Math.sqrt(1-u*u);
-  let dx=q*Math.cos(th),dy=u,dz=q*Math.sin(th);
-  if(dx*side<-.25)continue;                                  /* medial wall stays open: longitudinal fissure */
-  /* lobe shaping */
-  let rx=.92,ry=.80,rz=1.32;
-  if(dy<0)ry*=.72;                                           /* flatter underside */
-  if(dz>.3)ry*=1-.12*(dz-.3);                                /* frontal lobe tapers a little */
-  if(dz<-.5){rx*=1-.25*(-dz-.5);ry*=1-.18*(-dz-.5);}        /* narrower occipital pole */
-  const temporal=Math.exp(-((dy+.45)**2)/.04-((dz-.15)**2)/.25)*(dx*side>.2?1:0);
-  rx*=1+.16*temporal;                                        /* temporal lobe bulges out low on the side */
-  /* Sylvian (lateral) fissure: a groove running back and up above the temporal lobe */
-  const syl=Math.abs(dy-(-.18+.35*(.2-dz)*.5));
-  if(dx*side>.45&&dz>-.35&&dz<.75&&syl<.045)continue;
-  /* central sulcus: groove from top down the side, separating frontal from parietal */
-  const cen=Math.abs(dz-(.05+.25*dy));
-  const f=fold(dx*1.1,dy,dz)-(cen<.04&&dy>-.1?1.4:0);
-  const k=1+.075*f;
-  const x=side*.47+dx*rx*k,y=.1+dy*ry*k,z=dz*rz*k;
-  surf.push([x,y,z]);ridge.push(f);made++;
- }}
-hemi(-1,8200);hemi(1,8200);
-/* cerebellum: finely striped, tucked under the occipital lobes */
-for(let i=0;i<2600;i++){
- const u=Math.random()*2-1,th=Math.random()*Math.PI*2,q=Math.sqrt(1-u*u);
- const dx=q*Math.cos(th),dy=u,dz=q*Math.sin(th);
- if(dz>.35&&dy>-.2)continue;
- const f=Math.sin(26*dy+3*dz);const k=1+.04*f;
- surf.push([dx*.82*k,-.5+dy*.36*k,-.95+dz*.5*k]);ridge.push(f);}
-/* brainstem */
-for(let i=0;i<500;i++){const a=Math.random()*6.28,h=Math.random(),r=.2-.06*h;surf.push([Math.cos(a)*r,-.45-h*1.0,-.3-h*.15+Math.sin(a)*r]);ridge.push(.3);}
-const sN=surf.length,sPos=new Float32Array(sN*3),sCol=new Float32Array(sN*3),sSize=new Float32Array(sN),sAlpha=new Float32Array(sN);
-const cA=new THREE.Color(0x00d4ff),cB=new THREE.Color(0x8a5cff),tmp=new THREE.Color();
-surf.forEach((p,i)=>{sPos.set(p,i*3);
- const f=ridge[i],g=Math.max(0,Math.min(1,(f+1)/2));         /* 0 = deep groove, 1 = ridge crest */
- tmp.copy(cA).lerp(cB,Math.max(0,Math.min(1,(p[1]+.6)/1.4))*.85+Math.random()*.15);
- sCol.set([tmp.r,tmp.g,tmp.b],i*3);
- sSize[i]=.9+g*1.9+Math.random()*.5;sAlpha[i]=.06+g*g*.62;});
-const ptVS=`attribute float size;attribute float alpha;attribute vec3 color;varying vec3 vC;varying float vA;uniform float pr;
-void main(){vC=color;vA=alpha;vec4 mv=modelViewMatrix*vec4(position,1.);gl_PointSize=size*pr*(6./-mv.z);gl_Position=projectionMatrix*mv;}`;
-const ptFS=`varying vec3 vC;varying float vA;void main(){float d=length(gl_PointCoord-.5);if(d>.5)discard;float g=pow(1.-d*2.,1.8);gl_FragColor=vec4(vC*(.6+g),g*vA);}`;
-function ptMat(){return new THREE.ShaderMaterial({uniforms:{pr:{value:PR}},vertexShader:ptVS,fragmentShader:ptFS,transparent:true,depthWrite:false,blending:THREE.AdditiveBlending});}
-function ptGeo(pos,col,size,alpha){const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.BufferAttribute(pos,3));g.setAttribute('color',new THREE.BufferAttribute(col,3));g.setAttribute('size',new THREE.BufferAttribute(size,1));g.setAttribute('alpha',new THREE.BufferAttribute(alpha,1));return g;}
-brain.add(new THREE.Points(ptGeo(sPos,sCol,sSize,sAlpha),ptMat()));
-
-/* ── neurons (nodes) and synapses (edges) ── */
-const NN=320,nodes=[];
-while(nodes.length<NN){const k=(Math.random()*(sN-500))|0;if(ridge[k]<.2)continue;const p=surf[k];nodes.push(new THREE.Vector3(p[0]*.96,p[1]*.96,p[2]*.96));}
-const edges=[],adj=nodes.map(()=>[]);
-for(let i=0;i<NN;i++){
- const near=[];for(let j=0;j<NN;j++)if(j!==i){const d=nodes[i].distanceTo(nodes[j]);if(d<.75)near.push([d,j]);}
- near.sort((a,b)=>a[0]-b[0]).slice(0,3).forEach(([,j])=>{if(i<j||!adj[j].some(e=>edges[e].b===i)){const e=edges.length;edges.push({a:i,b:j,glow:0});adj[i].push(e);adj[j].push(e);}});
-}
-const eN=edges.length,ePos=new Float32Array(eN*6),eCol=new Float32Array(eN*6);
-edges.forEach((e,k)=>{ePos.set([nodes[e.a].x,nodes[e.a].y,nodes[e.a].z,nodes[e.b].x,nodes[e.b].y,nodes[e.b].z],k*6);});
-const eG=new THREE.BufferGeometry();eG.setAttribute('position',new THREE.BufferAttribute(ePos,3));eG.setAttribute('color',new THREE.BufferAttribute(eCol,3));
-brain.add(new THREE.LineSegments(eG,new THREE.LineBasicMaterial({vertexColors:true,transparent:true,opacity:.9,depthWrite:false,blending:THREE.AdditiveBlending})));
-
-const nPos=new Float32Array(NN*3),nCol=new Float32Array(NN*3),nSize=new Float32Array(NN),nAlpha=new Float32Array(NN),nGlow=new Float32Array(NN);
-nodes.forEach((v,i)=>{nPos.set([v.x,v.y,v.z],i*3);});
-const nG=ptGeo(nPos,nCol,nSize,nAlpha);brain.add(new THREE.Points(nG,ptMat()));
-
-/* travelling impulses */
-const PMAX=160,pPos=new Float32Array(PMAX*3),pCol=new Float32Array(PMAX*3),pSize=new Float32Array(PMAX),pAlpha=new Float32Array(PMAX);
-const pG=ptGeo(pPos,pCol,pSize,pAlpha);brain.add(new THREE.Points(pG,ptMat()));
-const pulses=[];
-const fireCols=[new THREE.Color(0x00ffff),new THREE.Color(0xff3cc8),new THREE.Color(0xffd23f),new THREE.Color(0x7cff6b),new THREE.Color(0xb48cff)];
-function fire(n,col,depth){
- nGlow[n]=1;
- adj[n].forEach(e=>{if(pulses.length<PMAX&&Math.random()<(depth?.55:.9)){const ed=edges[e];pulses.push({e,from:n,to:ed.a===n?ed.b:ed.a,t:0,spd:.9+Math.random()*1.4,col,depth});}});
-}
-
-let mx=0,my=0;document.addEventListener('mousemove',e=>{mx=(e.clientX/innerWidth-.5)*.4;my=(e.clientY/innerHeight-.5)*-.25;});
-const ck=new THREE.Clock();let last=0,nextFire=0;
-(function anim(){requestAnimationFrame(anim);
- const t=ck.getElapsedTime(),dt=Math.min(t-last,.05);last=t;
- brain.rotation.y=t*.18;brain.rotation.x=-.12+Math.sin(t*.35)*.06;brain.position.y=.15+Math.sin(t*.7)*.08;
-
- /* spontaneous firing */
- if(t>nextFire){fire((Math.random()*NN)|0,fireCols[(Math.random()*fireCols.length)|0],0);nextFire=t+.12+Math.random()*.35;}
- /* advance impulses */
- for(let i=pulses.length-1;i>=0;i--){const p=pulses[i];p.t+=dt*p.spd;edges[p.e].glow=1;
-  if(p.t>=1){pulses.splice(i,1);if(p.depth<3)fire(p.to,p.col,p.depth+1);else nGlow[p.to]=1;}}
- for(let i=0;i<PMAX;i++){const p=pulses[i];
-  if(p){const A=nodes[p.from],B=nodes[p.to];pPos[i*3]=A.x+(B.x-A.x)*p.t;pPos[i*3+1]=A.y+(B.y-A.y)*p.t;pPos[i*3+2]=A.z+(B.z-A.z)*p.t;pCol[i*3]=p.col.r;pCol[i*3+1]=p.col.g;pCol[i*3+2]=p.col.b;pSize[i]=7;pAlpha[i]=1;}
-  else{pAlpha[i]=0;pSize[i]=0;}}
- pG.attributes.position.needsUpdate=pG.attributes.color.needsUpdate=pG.attributes.size.needsUpdate=pG.attributes.alpha.needsUpdate=true;
- /* node flashes decay */
- for(let i=0;i<NN;i++){nGlow[i]*=.93;const g=nGlow[i];nCol[i*3]=.2+g*.8;nCol[i*3+1]=.75+g*.25;nCol[i*3+2]=1;nSize[i]=3+g*9;nAlpha[i]=.35+g*.65;}
- nG.attributes.color.needsUpdate=nG.attributes.size.needsUpdate=nG.attributes.alpha.needsUpdate=true;
- /* synapse glow decay */
- for(let k=0;k<eN;k++){const e=edges[k];e.glow*=.95;const b=.05+e.glow*.75;for(let v=0;v<2;v++){eCol[k*6+v*3]=b*.3;eCol[k*6+v*3+1]=b*.85;eCol[k*6+v*3+2]=b;}}
- eG.attributes.color.needsUpdate=true;
-
- /* fog drift */
- fogParts.forEach(sp=>{const u=sp.userData;u.a+=u.spd*dt;sp.position.set(Math.cos(u.a)*u.r,u.y+Math.sin(t*.25+u.ph)*.4,u.z);
-  sp.material.opacity=u.op*(.75+.25*Math.sin(t*.5+u.ph));sp.material.rotation+=dt*.05;sp.scale.setScalar(u.sc*(1+.08*Math.sin(t*.3+u.ph)));});
- fog.rotation.z=Math.sin(t*.05)*.2;
- dust.rotation.y=t*.02;dust.position.y=Math.sin(t*.2)*.15;
-
- cam.position.x=mx*1.6;cam.position.y=.3+my;cam.lookAt(0,0,0);
- R.render(S,cam);})();
-function rs(){const w=C.clientWidth,h=C.clientHeight;if(C.width!==w*PR||C.height!==h*PR){R.setSize(w,h,false);cam.aspect=w/h;cam.updateProjectionMatrix();}}
-window.addEventListener('resize',rs);rs();
-})();
+/* ═══ HERO: shared FBF neural scene (static/neural-scene.js) ═══ */
+FBFNeural.mount(document.getElementById('heroCanvas'),{brainUrl:'/static/brain.bin'});
 
 /* ═══ DASHBOARD ENGINE ═══ */
 const API='';
 setInterval(()=>{document.getElementById('clk').textContent=new Date().toLocaleTimeString();},1000);
-const tabs=['dashboard','dryrun','autotrade','advisory','signals','portfolio','backtest','audit'];
-document.querySelectorAll('.tbtn').forEach(b=>{b.onclick=()=>{
-document.querySelectorAll('.tbtn').forEach(x=>x.classList.remove('on'));b.classList.add('on');
-tabs.forEach(id=>{document.getElementById('p-'+id).style.display='none';});
-document.getElementById('p-'+b.dataset.t).style.display='block';
-if(b.dataset.t==='dashboard')loadDash();
-if(b.dataset.t==='autotrade')loadAT();
-if(b.dataset.t==='dryrun')loadDry();
-if(b.dataset.t==='advisory')loadAdvisory();
-if(b.dataset.t==='signals')loadScan();
-if(b.dataset.t==='portfolio')loadPF();
-if(b.dataset.t==='audit')loadAudit();
-};});
+const tabs=['dashboard','stocks','crypto','dryrun','autotrade','advisory','signals','portfolio','backtest','audit','coach','peptides','sports'];
+const loaders={dashboard:()=>loadDash(),stocks:()=>loadMarket('stock'),crypto:()=>loadMarket('crypto'),dryrun:()=>loadDry(),autotrade:()=>loadAT(),
+ advisory:()=>loadAdvisory(),signals:()=>loadScan(),portfolio:()=>loadPF(),audit:()=>loadAudit(),coach:()=>openCoach(),peptides:()=>loadPeptides(false),sports:()=>openSports()};
+function showTab(t){
+ document.querySelectorAll('.tile[data-t]').forEach(x=>x.classList.toggle('on',x.dataset.t===t));
+ tabs.forEach(id=>{const el=document.getElementById('p-'+id);if(el)el.style.display=id===t?'block':'none';});
+ (loaders[t]||(()=>{}))();
+ const p=document.getElementById('p-'+t);if(p&&window.scrollY<p.offsetTop-400)p.scrollIntoView({behavior:'smooth',block:'start'});
+}
+let LINKS={};
+async function loadLinks(){try{LINKS=await (await fetch(API+'/api/hub/links')).json();}catch(e){}
+ document.querySelectorAll('.tile[data-l]').forEach(t=>{const L=LINKS[t.dataset.l];
+  if(!t.querySelector('.ext'))t.insertAdjacentHTML('beforeend','<span class="ext">↗</span><span class="edit" title="Change link">✎</span>');
+  if(L)t.title=L.url;});}
+async function editLink(key){const L=LINKS[key]||{};const url=prompt(`Link for "${L.title||key}"`,L.url||'https://');if(!url)return;
+ const r=await fetch(API+'/api/hub/links/'+key,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({url})});
+ if(r.ok){LINKS=await r.json();toast('Link saved','ok');loadLinks();}else toast((await r.json()).detail||'Invalid link','err');}
+document.querySelectorAll('.tile').forEach(t=>{
+ t.addEventListener('mousemove',e=>{const r=t.getBoundingClientRect(),x=(e.clientX-r.left)/r.width,y=(e.clientY-r.top)/r.height;
+  t.style.setProperty('--ry',((x-.5)*16)+'deg');t.style.setProperty('--rx',((.5-y)*14)+'deg');t.style.setProperty('--mx',(x*100)+'%');t.style.setProperty('--my',(y*100)+'%');});
+ t.addEventListener('mouseleave',()=>{t.style.setProperty('--rx','0deg');t.style.setProperty('--ry','0deg');});
+ t.addEventListener('click',e=>{
+  if(e.target.classList.contains('edit')){e.stopPropagation();editLink(t.dataset.l);return;}
+  if(t.dataset.t)showTab(t.dataset.t);
+  else if(t.dataset.l){const L=LINKS[t.dataset.l];if(L&&L.url)window.open(L.url,'_blank','noopener');}
+  else if(t.dataset.x==='aihealth')checkAI(true);
+ });
+});
+
 
 function toast(m,c='ok'){const t=document.createElement('div');t.className='toast '+c;t.textContent=(c==='ok'?'✓ ':'✗ ')+m;document.getElementById('toasts').appendChild(t);setTimeout(()=>t.remove(),3500);}
 
@@ -615,7 +621,7 @@ try{const d=await (await fetch(API+'/api/scan')).json();
 const all={...(d.stocks||{}),...(d.crypto||{})};
 const hit=Object.entries(all).filter(([k])=>k.toLowerCase().includes(q.toLowerCase()));
 if(!hit.length){toast(`${q} isn't in the scan list`,'err');return;}
-document.querySelector('.tbtn[data-t="signals"]').click();
+showTab('signals');
 setTimeout(()=>{renderSigs('sigsStock2',Object.fromEntries(hit.filter(([,v])=>v.asset_type==='stock')));renderSigs('sigsCrypto2',Object.fromEntries(hit.filter(([,v])=>v.asset_type==='crypto')));},300);
 }catch(e){toast(e.message,'err');}
 }
@@ -684,9 +690,118 @@ async function resetPM(){if(!confirm('Reset the Polymarket simulation?'))return;
 async function resetCopy(){if(!confirm('Reset the CopyBot simulation?'))return;await fetch(API+'/api/copy/reset',{method:'POST'});loadDry();}
 async function runCopy(){await fetch(API+'/api/copy/run',{method:'POST'});toast('CopyBot cycle started (takes ~1 min)');setTimeout(loadDry,60000);}
 
+
+/* ── HUB: tile status ── */
+const setS=(k,h)=>{const el=document.querySelector(`.st[data-s="${k}"]`);if(el)el.innerHTML=h;};
+async function loadTiles(){
+ try{const s=await (await fetch(API+'/api/hub/status')).json();
+  setS('stocks',s.stocks.n?`<span class="up">${s.stocks.buy} buy</span> · <span class="dn">${s.stocks.sell} sell</span>`:'scanning…');
+  setS('crypto',s.crypto.n?`<span class="up">${s.crypto.buy} buy</span> · <span class="dn">${s.crypto.sell} sell</span>`:'scanning…');
+  const eq=v=>v==null?'–':'$'+(+v).toFixed(0);
+  setS('dryrun',`Bot ${eq(s.sim.equity)} · PM ${eq(s.pm.equity)} · Copy ${eq(s.copy.equity)}`);
+  setS('peptides',s.peptides.papers!=null?`${s.peptides.papers} papers this week`:'Daily PubMed feed');
+ }catch(e){}
+}
+async function checkAI(show){
+ try{const h=await (await fetch(API+'/api/hub/ai-health')).json();
+  const ok=h.ok&&h.qdrant_ok&&h.llm_ready&&h.embeddings_ready;
+  setS('aihealth',ok?`<span class="up">● online</span> · ${(h.collection_points||0).toLocaleString()} docs`:'<span class="dn">● down</span>');
+  const ch=document.getElementById('coachHealth');if(ch)ch.innerHTML=ok?`Grounded in ${(h.collection_points||0).toLocaleString()} research passages · <span style="color:var(--green)">online</span>`:'<span style="color:var(--red)">AI server is not answering right now</span>';
+  if(show)toast(ok?'AI server healthy':'AI server problem: '+(h.error||'check fbf-rag'),ok?'ok':'err');
+ }catch(e){setS('aihealth','<span class="dn">● unreachable</span>');}
+}
+
+/* ── STOCKS / CRYPTO ── */
+async function loadMarket(type){
+ const pre=type==='stock'?'st':'cr';
+ try{
+  const[scan,pos,hist,sim]=await Promise.all(['/api/scan','/api/auto-trade/positions','/api/auto-trade/history?limit=300','/api/sim/summary'].map(u=>fetch(API+u).then(r=>r.json())));
+  const sigs=type==='stock'?scan.stocks||{}:scan.crypto||{};
+  renderSigs(pre+'Sigs',sigs);
+  const P=(pos||[]).filter(p=>p.asset_type===type), H=(hist||[]).filter(t=>t.asset_type===type);
+  const closed=H.filter(t=>t.status==='closed'), net=closed.reduce((a,t)=>a+(t.pnl||0),0), costs=closed.reduce((a,t)=>a+Object.values(t.costs||{}).reduce((x,y)=>x+y,0),0);
+  const vals=Object.values(sigs);
+  document.getElementById(pre+'Stats').innerHTML=`
+<div class="stat"><div class="stat-val green">${vals.filter(v=>v.action==='BUY').length}</div><div class="stat-lbl">Buy signals</div></div>
+<div class="stat"><div class="stat-val red">${vals.filter(v=>v.action==='SELL').length}</div><div class="stat-lbl">Sell signals</div></div>
+<div class="stat"><div class="stat-val cyan">${P.length}</div><div class="stat-lbl">Open (dry run)</div></div>
+<div class="stat"><div class="stat-val ${cls(net)}">${money(net)}</div><div class="stat-lbl">Net P&L after fees</div></div>
+<div class="stat"><div class="stat-val red">-${money(costs)}</div><div class="stat-lbl">Fees paid</div></div>
+<div class="stat"><div class="stat-val amber">${type==='stock'?'Alpaca':sim.crypto_venue.split(' (')[0]}</div><div class="stat-lbl">Venue</div></div>`;
+  document.getElementById(pre+'Pos').innerHTML=(P.length?P.map(p=>`<div class="pos"><div><div class="pos-asset">${p.asset.toUpperCase()} <span class="badge ${p.side==='buy'?'BUY':'SELL'}">${p.side==='buy'?'LONG':'SHORT'}</span></div>
+<div class="pos-meta">${p.qty} @ $${(+p.entry_price).toFixed(2)} · stop $${p.stop_loss} · target $${p.take_profit} · entry costs $${(p.entry_costs_total||0).toFixed(2)}</div></div>
+<button class="btn btn-ghost" onclick="closePos('${p.id}')">Close</button></div>`).join(''):'<span style="color:var(--dim)">No open positions.</span>')+
+  '<h4 style="margin:1rem 0 .5rem;font-size:.72rem;letter-spacing:.15em;color:var(--cyan)">RECENT TRADES</h4>'+
+  (H.slice(0,15).map(t=>`<div class="sig" style="display:flex;justify-content:space-between;font-family:var(--mono);font-size:.75rem"><span>${(t.timestamp||'').slice(5,16).replace('T',' ')} · ${t.side.toUpperCase()} ${t.asset} × ${t.qty} @ $${(+t.price).toFixed(2)}</span>${t.status==='closed'?`<span class="pos-pnl ${t.pnl>=0?'pos':'neg'}">${money(t.pnl)}</span>`:''}</div>`).join('')||'<span style="color:var(--dim)">No trades yet.</span>');
+ }catch(e){toast(e.message,'err');}
+}
+
+/* ── AI COACH (private) ── */
+let coachScene=null, coachHist=[];
+const COACH_SAMPLES=['How should I peak for my Dec 5 show?','Best peptide stack for recomp at 50+?','Read my latest bloodwork trends','Weekly volume for lagging delts?'];
+function openCoach(){
+ if(!coachScene&&window.FBFNeural)coachScene=FBFNeural.mount(document.getElementById('coachCanvas'),{brainUrl:'/static/brain.bin',scale:1.6,mouse:false,camZ:5.4,offsetY:.25});
+ document.getElementById('coachChips').innerHTML=COACH_SAMPLES.map(q=>`<span class="chip" onclick="document.getElementById('coachQ').value=this.textContent;document.getElementById('coachQ').focus()">${q}</span>`).join('');
+ checkAI(false);renderCoach();setTimeout(()=>document.getElementById('coachQ').focus(),200);
+}
+function mdLite(t){return (t||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>').replace(/\n/g,'<br>');}
+function renderCoach(){
+ const th=document.getElementById('coachThread');
+ th.innerHTML=coachHist.length?coachHist.map(m=>`<div class="msg ${m.role==='user'?'me':'ai'}">${mdLite(m.text)}${m.sources?`<div class="src">Sources: ${m.sources.join(' · ')}${m.grounded===false?' · <span style="color:var(--amber)">not grounded</span>':''}</div>`:''}</div>`).join('')
+ :'<div style="margin:auto;text-align:center;color:var(--dim);font-size:.85rem">Your private line to the FBF research library.<br>Ask below and watch the brain work.</div>';
+ th.scrollTop=th.scrollHeight;
+}
+async function coachSend(){
+ const q=document.getElementById('coachQ'),go=document.getElementById('coachGo'),text=q.value.trim();if(!text)return;
+ coachHist.push({role:'user',text});q.value='';go.disabled=true;
+ coachHist.push({role:'ai',text:'Thinking…'});renderCoach();
+ FBFNeural.thinking(true);
+ try{
+  const r=await fetch(API+'/api/coach',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({question:text,history:coachHist.slice(0,-2)})});
+  const d=await r.json();coachHist.pop();
+  if(!r.ok||d.error)coachHist.push({role:'ai',text:'⚠ '+(d.detail||d.error||'The coach could not answer.')});
+  else coachHist.push({role:'ai',text:d.answer,sources:(d.sources||[]).slice(0,5),grounded:d.grounded});
+ }catch(e){coachHist.pop();coachHist.push({role:'ai',text:'⚠ '+e.message});}
+ finally{FBFNeural.thinking(false);go.disabled=false;renderCoach();q.focus();}
+}
+function coachClear(){coachHist=[];renderCoach();}
+document.getElementById('coachQ').addEventListener('keydown',e=>{if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();coachSend();}});
+
+/* ── PEPTIDE RESEARCH ── */
+let PEP=null,pepFilter=null;
+async function loadPeptides(force){
+ const el=document.getElementById('pepList');
+ if(force){el.innerHTML='<span style="color:var(--dim)">Searching PubMed for every peptide on the list (about 30 seconds)…</span>';FBFNeural.thinking(true);}
+ try{PEP=await (await fetch(API+'/api/peptides'+(force?'?refresh=true':''))).json();renderPeptides();}
+ catch(e){el.innerHTML='<span style="color:var(--red)">'+e.message+'</span>';}
+ finally{if(force)FBFNeural.thinking(false);}
+}
+function renderPeptides(){
+ if(!PEP)return;
+ document.getElementById('pepMeta').textContent=`Updated ${PEP.refreshed.replace('T',' ')} · refreshes automatically every 24 hours · ${PEP.papers.length} papers`;
+ document.getElementById('pepChips').innerHTML=`<span class="chip ${!pepFilter?'on':''}" onclick="pepFilter=null;renderPeptides()">All</span>`+
+  Object.entries(PEP.counts).filter(([,n])=>n).sort((a,b)=>b[1]-a[1]).map(([k,n])=>`<span class="chip ${pepFilter===k?'on':''}" onclick="pepFilter='${k}';renderPeptides()">${k} · ${n}</span>`).join('');
+ const day=Date.now()-36*3600e3;
+ const list=PEP.papers.filter(p=>!pepFilter||p.peptides.includes(pepFilter));
+ document.getElementById('pepList').innerHTML=list.length?list.slice(0,150).map(p=>{const isNew=new Date((p.entrez||'').replace(/\//g,'-').replace(' ','T'))>day;
+  return`<div class="pep"><a href="${p.url}" target="_blank">${p.title||'(untitled) PMID '+p.pmid}</a>
+<div class="meta">${isNew?'<span class="tag new">NEW</span>':''}${p.peptides.map(x=>`<span class="tag">${x}</span>`).join('')} ${p.journal||''} · ${p.pubdate||''} · ${p.authors||''}${(p.types||[]).includes('Randomized Controlled Trial')?' · <b style="color:var(--amber)">RCT</b>':''}${(p.types||[]).includes('Review')?' · review':''}</div></div>`;}).join('')
+ :'<span style="color:var(--dim)">No new papers in the last 7 days.</span>';
+}
+
+/* ── SPORTS ── */
+function openSports(){const L=LINKS.sports||{url:'https://data.forgedbyfreedom.org/board.html'};const f=document.getElementById('sportsFrame');
+ if(!f.src)f.src=L.url;document.getElementById('sportsOpen').href=L.url;}
+
+/* light the brain while the market scanner runs a search */
+const _jarvisSearch=jarvisSearch;
+jarvisSearch=async function(){FBFNeural.thinking(true);try{await _jarvisSearch();}finally{setTimeout(()=>FBFNeural.thinking(false),600);}};
+
+loadLinks();loadTiles();checkAI(false);setInterval(loadTiles,60000);setInterval(()=>checkAI(false),300000);
+
 /* ── BOOT ── */
 loadDash();
-setInterval(()=>{const on=document.querySelector('.tbtn.on');if(!on)return;const t=on.dataset.t;
+setInterval(()=>{const on=document.querySelector('.tile.on[data-t]');if(!on)return;const t=on.dataset.t;
 if(t==='dashboard')loadDash();if(t==='autotrade')loadAT();if(t==='dryrun')loadDry();},30000);
 </script>
 </body>

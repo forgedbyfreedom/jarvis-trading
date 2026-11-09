@@ -33,12 +33,15 @@ import fees
 import sim_account
 import pm_sim
 import copy_sim
+import hub
+from fastapi.staticfiles import StaticFiles
 
 logging.basicConfig(level=logging.INFO,
                     format="%(name)s | %(levelname)s | %(message)s")
 log = logging.getLogger("jarvis")
 
 app = FastAPI(title="Jarvis Command Center", version="3.0.0")
+app.mount("/static", StaticFiles(directory=os.path.join(os.path.dirname(__file__), "static")), name="static")
 templates = Jinja2Templates(directory=os.path.join(os.path.dirname(__file__), "templates"))
 
 # ── SCAN STATE ──
@@ -120,6 +123,7 @@ def startup():
         pm_sim.start()
     if COPY_SIM_ENABLED:
         copy_sim.start()
+    hub.start()
     log.info("Jarvis Command Center v4 online. Auto-trade: " +
              ("ON (DRY RUN)" if PAPER_TRADING else "ON (LIVE)" if AUTO_TRADE_ENABLED else "OFF"))
 
@@ -437,3 +441,66 @@ def api_copy_run():
 def api_copy_reset():
     copy_sim.reset()
     return {"status": "reset"}
+
+
+# ═══════════════════════════════════════════
+#  HUB: link tiles, tile status, AI Coach, peptide research
+# ═══════════════════════════════════════════
+@app.get("/api/hub/links")
+def api_hub_links():
+    return hub.links()
+
+class LinkUpdate(BaseModel):
+    url: str
+    title: Optional[str] = None
+
+@app.put("/api/hub/links/{key}")
+def api_hub_set_link(key: str, body: LinkUpdate):
+    if not body.url.startswith(("https://", "http://", "mailto:")):
+        raise HTTPException(400, "URL must start with https://")
+    return hub.set_link(key, body.url, body.title)
+
+@app.get("/api/hub/status")
+def api_hub_status():
+    out = {}
+    try: out["sim"] = sim_account.summary(rm.get_open_positions())
+    except Exception as e: out["sim"] = {"error": str(e)}
+    try: out["pm"] = {k: v for k, v in pm_sim.summary().items() if k in ("equity", "totals", "running")}
+    except Exception as e: out["pm"] = {"error": str(e)}
+    try:
+        c = copy_sim.summary(); out["copy"] = {"equity": c["equity"], "pnl_total": c["pnl_total"]}
+    except Exception as e: out["copy"] = {"error": str(e)}
+    scan = _last_scan or {}
+    out["stocks"] = {"buy": sum(1 for v in scan.get("stocks", {}).values() if v.get("action") == "BUY"),
+                     "sell": sum(1 for v in scan.get("stocks", {}).values() if v.get("action") == "SELL"),
+                     "n": len(scan.get("stocks", {}))}
+    out["crypto"] = {"buy": sum(1 for v in scan.get("crypto", {}).values() if v.get("action") == "BUY"),
+                     "sell": sum(1 for v in scan.get("crypto", {}).values() if v.get("action") == "SELL"),
+                     "n": len(scan.get("crypto", {}))}
+    try:
+        p = json.load(open(hub.PEPTIDE_FILE, encoding="utf-8"))
+        out["peptides"] = {"papers": len(p.get("papers", [])), "refreshed": p.get("refreshed")}
+    except Exception:
+        out["peptides"] = {"papers": None}
+    return out
+
+@app.get("/api/hub/ai-health")
+def api_hub_ai_health():
+    return hub.ai_health()
+
+class CoachReq(BaseModel):
+    question: str
+    history: list = []
+
+@app.post("/api/coach")
+def api_coach(req: CoachReq):
+    if not req.question.strip():
+        raise HTTPException(400, "Ask a question")
+    try:
+        return hub.coach_ask(req.question, req.history)
+    except Exception as e:
+        raise HTTPException(502, f"AI Coach unavailable: {e}")
+
+@app.get("/api/peptides")
+def api_peptides(refresh: bool = False):
+    return hub.peptides(force=refresh)
