@@ -33,15 +33,16 @@ def send_telegram(text: str, emoji: str = "info") -> bool:
         return False
 
 def alert_recommendation(asset: str, asset_type: str, action: str,
-                         price: float, confidence: int, rationale: list) -> None:
+                         price: float, confidence: float, rationale: list) -> None:
+    pct = round(confidence * 100) if confidence <= 1 else round(confidence)
     if action == "HOLD":
         return
     icon = "BUY" if action == "BUY" else "SELL"
-    lines = [f"<b>{action} {asset.upper()}</b> - ${price:,.2f} ({confidence}% conf)"]
+    lines = [f"<b>{action} {asset.upper()}</b> - ${price:,.2f} ({pct}% conf)"]
     for r in rationale[:3]:
         lines.append(f"  - {r}")
     msg = "\n".join(lines)
-    log.info(f"ALERT: {action} {asset} @ ${price} ({confidence}%)")
+    log.info(f"ALERT: {action} {asset} @ ${price} ({pct}%)")
     send_slack(msg, icon)
     send_telegram(msg, icon)
 

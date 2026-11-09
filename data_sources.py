@@ -108,17 +108,20 @@ def _coinbase_exchange_klines(base: str, days: int) -> pd.DataFrame:
     r = _rq.get(url, params=params, timeout=10, headers={"User-Agent": "Mozilla/5.0"})
     r.raise_for_status()
     candles = r.json()
-    rows = [{"open":c[3],"high":c[2],"low":c[1],"close":c[4],"volume":c[0]} for c in candles]
+    rows = [{"open":c[3],"high":c[2],"low":c[1],"close":c[4],"volume":c[5]} for c in reversed(candles)]
     return pd.DataFrame(rows).astype(float)
 
 
+_TICKER = {"bitcoin": "BTC", "ethereum": "ETH", "solana": "SOL", "ripple": "XRP", "cardano": "ADA",
+           "dogecoin": "DOGE", "chainlink": "LINK", "polkadot": "DOT", "avalanche": "AVAX", "polygon": "POL"}
+
+
 def fetch_crypto_klines(cid: str, days: int = 90) -> pd.DataFrame:
-    base = cid.upper()
+    base = _TICKER.get(cid.lower(), cid.upper())
     empty = pd.DataFrame(columns=["open","high","low","close","volume"])
     for name, fn, arg in [
-        ("CoinGecko",  _coingecko_ohlcv,        cid),
-        ("Binance",    _binance_klines,         base),
         ("CoinbaseEx", _coinbase_exchange_klines, base),
+        ("CoinGecko",  _coingecko_ohlcv,        cid),
     ]:
         try:
             log.info(f"Trying {name} for {cid}…")

@@ -449,11 +449,11 @@ el.innerHTML=en.map(([sym,r])=>{
 const cls=r.action==='BUY'?'BUY':r.action==='SELL'?'SELL':'HOLD';
 const pct=Math.round((r.confidence||0)*100);
 const bc=pct>=80?'hi':'mid';
-const tags=(r.indicators||[]).slice(0,5).map(i=>`<span class="tag">${i}</span>`).join('');
+const ind=r.indicators||{};const tags=[ind.rsi!=null?`RSI ${ind.rsi}`:'',ind.macd_hist!=null?`MACD ${ind.macd_hist>0?'+':''}${ind.macd_hist}`:'',ind.vol_ratio!=null?`Vol ${ind.vol_ratio}x`:''].filter(Boolean).map(i=>`<span class="tag">${i}</span>`).join('');
 return`<div class="sig"><div class="sig-top"><span><span class="sig-asset">${sym}</span><span class="sig-price">$${(r.price||0).toFixed(2)}</span></span><span class="badge ${cls}">${r.action}</span></div>
 <div class="conf-bar"><div class="conf-fill ${bc}" style="width:${pct}%"></div></div>
 <div style="font-size:.7rem;color:var(--dim)">Confidence ${pct}%</div>
-<div class="sig-why">${r.rationale||''}</div>
+<div class="sig-why">${Array.isArray(r.rationale)?r.rationale.join(' · '):(r.rationale||'')}</div>
 ${tags?`<div class="sig-tags">${tags}</div>`:''}
 <div style="margin-top:.5rem"><button class="btn btn-go" style="font-size:.7rem" onclick="openEx('${sym}','${r.asset_type||'stock'}','${(r.action||'buy').toLowerCase()}')">⚡ Trade</button></div></div>`;
 }).join('');

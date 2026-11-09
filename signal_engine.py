@@ -26,7 +26,7 @@ class Recommendation:
     asset_type: str
     price:      float
     action:     Action
-    confidence: int
+    confidence: float  # 0-1
     rationale:  List[str] = field(default_factory=list)
     indicators: dict       = field(default_factory=dict)
 
@@ -110,17 +110,17 @@ def analyze(df: pd.DataFrame, symbol: str, asset_type: str) -> Recommendation:
     else:
         rationale.append(f"Volume {vol_ratio:.1f}x avg - no strong signal")
 
-    total = bull + bear
-    if total == 0:
-        action, conf = Action.HOLD, 50
-    elif bull > bear:
-        conf = int((bull / total) * 100)
-        action = Action.BUY if conf >= MIN_CONFIDENCE else Action.HOLD
-    elif bear > bull:
-        conf = int((bear / total) * 100)
-        action = Action.SELL if conf >= MIN_CONFIDENCE else Action.HOLD
+    # Confidence = strength of the net case, not each side's share of the points.
+    # (A share-based score called a lone "mild MACD" point 100% certain.)
+    # Max one-sided score is 80; a net of 60+ is treated as full conviction.
+    net = bull - bear
+    conf = int(round(50 + 50 * min(abs(net) / 60, 1.0)))
+    if net > 0 and conf / 100 >= MIN_CONFIDENCE:
+        action = Action.BUY
+    elif net < 0 and conf / 100 >= MIN_CONFIDENCE:
+        action = Action.SELL
     else:
-        action, conf = Action.HOLD, 50
+        action = Action.HOLD
 
     indicators = {
         "rsi": round(float(rsi),2), "macd_hist": round(float(hist_last),4),
@@ -131,5 +131,5 @@ def analyze(df: pd.DataFrame, symbol: str, asset_type: str) -> Recommendation:
 
     return Recommendation(
         asset=symbol, asset_type=asset_type, price=round(price,2),
-        action=action, confidence=conf, rationale=rationale, indicators=indicators,
+        action=action, confidence=round(conf / 100, 2), rationale=rationale, indicators=indicators,
     )
