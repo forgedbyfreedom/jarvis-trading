@@ -121,15 +121,20 @@ a{color:var(--cyan);text-decoration:none}
 @keyframes pulse{0%,100%{filter:drop-shadow(0 0 6px rgba(212,169,58,.5))}50%{filter:drop-shadow(0 0 18px rgba(212,169,58,.95))}}
 .st .up{color:var(--green)}.st .dn{color:var(--red)}
 /* ── AI Coach ── */
-.coach-wrap{position:relative;border-radius:18px;overflow:hidden;border:1px solid rgba(212,169,58,.25);background:#03060d;min-height:72vh}
-.coach-bg{position:absolute;inset:0;width:100%;height:100%;opacity:.55;pointer-events:none}
-.coach-inner{position:relative;z-index:1;display:flex;flex-direction:column;height:72vh;padding:1.2rem 1.4rem;gap:.9rem}
+.coach-wrap{position:relative;border-radius:18px;overflow:hidden;border:1px solid rgba(212,169,58,.25);background:radial-gradient(ellipse 70% 40% at 50% 22%,rgba(60,40,140,.18),transparent),#03060d}
+.coach-stage{position:relative;height:clamp(260px,42vh,460px);margin:-.4rem -1.4rem 0}
+.coach-bg{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
+.stage-status{position:absolute;left:0;right:0;bottom:.4rem;text-align:center;font-size:.72rem;letter-spacing:.25em;color:#9fe9ff;text-transform:uppercase;text-shadow:0 0 12px rgba(0,212,255,.8);opacity:0;transition:opacity .4s}
+.stage-status.on{opacity:1;animation:blink 1.2s ease-in-out infinite}
+@keyframes blink{50%{opacity:.45}}
+.coach-inner{position:relative;z-index:1;display:flex;flex-direction:column;padding:1.2rem 1.4rem 1.4rem;gap:.9rem}
 .coach-head{display:flex;justify-content:space-between;align-items:flex-start}
 .coach-eyebrow{font-size:.62rem;letter-spacing:.3em;color:#D4A93A;font-weight:700}
 .coach-head h3{font-size:1.5rem;font-weight:800;color:#fff;letter-spacing:.04em;text-shadow:0 0 18px rgba(0,212,255,.4)}
 .coach-sub{font-size:.75rem;color:var(--dim)}
-.coach-thread{flex:1;overflow-y:auto;display:flex;flex-direction:column;gap:.7rem;padding-right:.3rem}
-.msg{max-width:78%;padding:.8rem 1rem;border-radius:14px;font-size:.88rem;line-height:1.55;backdrop-filter:blur(10px)}
+.coach-thread{max-height:62vh;overflow-y:auto;display:flex;flex-direction:column;gap:.7rem;padding:.3rem .3rem 0 0;border-top:1px solid rgba(0,212,255,.1);padding-top:.9rem}
+.coach-thread:empty{display:none}
+.msg{max-width:88%;padding:.8rem 1rem;border-radius:14px;font-size:.88rem;line-height:1.55;backdrop-filter:blur(10px)}
 .msg.me{align-self:flex-end;background:rgba(212,169,58,.16);border:1px solid rgba(212,169,58,.35);color:#fff3d6}
 .msg.ai{align-self:flex-start;background:rgba(8,16,32,.78);border:1px solid rgba(0,212,255,.18);color:#dbe7f5}
 .msg .src{margin-top:.5rem;font-size:.7rem;color:var(--dim)}
@@ -330,17 +335,17 @@ a{color:var(--cyan);text-decoration:none}
 <!-- ═══ AI COACH (private) ═══ -->
 <div id="p-coach" style="display:none">
 <div class="coach-wrap">
- <canvas id="coachCanvas" class="coach-bg"></canvas>
  <div class="coach-inner">
   <div class="coach-head"><div><div class="coach-eyebrow">PRIVATE · BRYAN ONLY</div><h3>FBF AI Coach</h3>
    <div class="coach-sub" id="coachHealth">Grounded in the FBF research library</div></div>
    <button class="btn btn-ghost" onclick="coachClear()">New chat</button></div>
-  <div class="coach-thread" id="coachThread"></div>
+  <div class="coach-stage"><canvas id="coachCanvas" class="coach-bg"></canvas><div class="stage-status" id="coachStatus"></div></div>
   <div class="ask-shell" id="askShell">
    <textarea id="coachQ" rows="2" placeholder="Ask the FBF AI Coach: training, nutrition, peptides, bloodwork, protocols…"></textarea>
    <button class="ask-go" id="coachGo" onclick="coachSend()">Ask ➜</button>
   </div>
   <div class="coach-chips" id="coachChips"></div>
+  <div class="coach-thread" id="coachThread"></div>
  </div>
 </div></div>
 
@@ -740,29 +745,30 @@ async function loadMarket(type){
 let coachScene=null, coachHist=[];
 const COACH_SAMPLES=['How should I peak for my Dec 5 show?','Best peptide stack for recomp at 50+?','Read my latest bloodwork trends','Weekly volume for lagging delts?'];
 function openCoach(){
- if(!coachScene&&window.FBFNeural)coachScene=FBFNeural.mount(document.getElementById('coachCanvas'),{brainUrl:'/static/brain.bin',scale:1.6,mouse:false,camZ:5.4,offsetY:.25});
+ if(!coachScene&&window.FBFNeural)coachScene=FBFNeural.mount(document.getElementById('coachCanvas'),{brainUrl:'/static/brain.bin',scale:1.5,mouse:false,camZ:5.6,offsetY:.12});
  document.getElementById('coachChips').innerHTML=COACH_SAMPLES.map(q=>`<span class="chip" onclick="document.getElementById('coachQ').value=this.textContent;document.getElementById('coachQ').focus()">${q}</span>`).join('');
  checkAI(false);renderCoach();setTimeout(()=>document.getElementById('coachQ').focus(),200);
 }
 function mdLite(t){return (t||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>').replace(/\n/g,'<br>');}
 function renderCoach(){
  const th=document.getElementById('coachThread');
- th.innerHTML=coachHist.length?coachHist.map(m=>`<div class="msg ${m.role==='user'?'me':'ai'}">${mdLite(m.text)}${m.sources?`<div class="src">Sources: ${m.sources.join(' · ')}${m.grounded===false?' · <span style="color:var(--amber)">not grounded</span>':''}</div>`:''}</div>`).join('')
- :'<div style="margin:auto;text-align:center;color:var(--dim);font-size:.85rem">Your private line to the FBF research library.<br>Ask below and watch the brain work.</div>';
- th.scrollTop=th.scrollHeight;
+ const pairs=[];for(let i=0;i<coachHist.length;i+=2)pairs.push(coachHist.slice(i,i+2));
+ th.innerHTML=coachHist.length?pairs.reverse().flat().map(m=>`<div class="msg ${m.role==='user'?'me':'ai'}">${mdLite(m.text)}${m.sources?`<div class="src">Sources: ${m.sources.join(' · ')}${m.grounded===false?' · <span style="color:var(--amber)">not grounded</span>':''}</div>`:''}</div>`).join('')
+ :'';
+ th.scrollTop=0;
 }
 async function coachSend(){
  const q=document.getElementById('coachQ'),go=document.getElementById('coachGo'),text=q.value.trim();if(!text)return;
  coachHist.push({role:'user',text});q.value='';go.disabled=true;
  coachHist.push({role:'ai',text:'Thinking…'});renderCoach();
- FBFNeural.thinking(true);
+ FBFNeural.thinking(true);const cs=document.getElementById('coachStatus');cs.textContent='Searching the research library';cs.classList.add('on');
  try{
   const r=await fetch(API+'/api/coach',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({question:text,history:coachHist.slice(0,-2)})});
   const d=await r.json();coachHist.pop();
   if(!r.ok||d.error)coachHist.push({role:'ai',text:'⚠ '+(d.detail||d.error||'The coach could not answer.')});
   else coachHist.push({role:'ai',text:d.answer,sources:(d.sources||[]).slice(0,5),grounded:d.grounded});
  }catch(e){coachHist.pop();coachHist.push({role:'ai',text:'⚠ '+e.message});}
- finally{FBFNeural.thinking(false);go.disabled=false;renderCoach();q.focus();}
+ finally{FBFNeural.thinking(false);document.getElementById('coachStatus').classList.remove('on');go.disabled=false;renderCoach();q.focus();}
 }
 function coachClear(){coachHist=[];renderCoach();}
 document.getElementById('coachQ').addEventListener('keydown',e=>{if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();coachSend();}});
