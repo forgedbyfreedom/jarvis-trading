@@ -206,6 +206,12 @@ a{color:var(--cyan);text-decoration:none}
    <div class="tile" data-t="audit"><span class="ic">🧾</span><span class="tt">Audit Log</span><span class="st">Every order</span></div>
   </div>
  </div>
+ <div class="dock-sec" style="--acc:80,170,255">
+  <h4>Intel</h4>
+  <div class="tiles">
+   <div class="tile" data-t="godseye"><span class="ic">🌍</span><span class="tt">God's Eye View</span><span class="st" data-s="godseye">Live 3D globe</span></div>
+  </div>
+ </div>
  <div class="dock-sec" style="--acc:212,169,58">
   <h4>Forged by Freedom</h4>
   <div class="tiles">
@@ -361,6 +367,13 @@ a{color:var(--cyan);text-decoration:none}
 <div class="pbody" style="padding:0"><iframe id="sportsFrame" title="FBF Sports Board" style="width:100%;height:78vh;border:0;background:#050810"></iframe></div></div>
 </div>
 
+<div id="p-godseye" style="display:none">
+<div class="panel full"><div class="phead"><h3>God's Eye View</h3>
+<div style="display:flex;gap:8px;align-items:center"><span id="gevStatus" style="color:var(--dim);font-size:12px"></span>
+<a class="btn btn-ghost" href="http://localhost:4173" target="_blank">Open full screen ↗</a></div></div>
+<div class="pbody" style="padding:0"><iframe id="gevFrame" title="God's Eye View" allow="microphone; fullscreen; geolocation" style="width:100%;height:80vh;border:0;background:#000"></iframe></div></div>
+</div>
+
 </div><!-- end .wrap -->
 
 <!-- ═══ TRADE MODAL ═══ -->
@@ -383,9 +396,9 @@ FBFNeural.mount(document.getElementById('heroCanvas'),{brainUrl:'/static/brain.b
 /* ═══ DASHBOARD ENGINE ═══ */
 const API='';
 setInterval(()=>{document.getElementById('clk').textContent=new Date().toLocaleTimeString();},1000);
-const tabs=['dashboard','stocks','crypto','dryrun','autotrade','advisory','signals','portfolio','backtest','audit','coach','peptides','sports'];
+const tabs=['dashboard','stocks','crypto','dryrun','autotrade','advisory','signals','portfolio','backtest','audit','coach','peptides','sports','godseye'];
 const loaders={dashboard:()=>loadDash(),stocks:()=>loadMarket('stock'),crypto:()=>loadMarket('crypto'),dryrun:()=>loadDry(),autotrade:()=>loadAT(),
- advisory:()=>loadAdvisory(),signals:()=>loadScan(),portfolio:()=>loadPF(),audit:()=>loadAudit(),coach:()=>openCoach(),peptides:()=>loadPeptides(false),sports:()=>openSports()};
+ advisory:()=>loadAdvisory(),signals:()=>loadScan(),portfolio:()=>loadPF(),audit:()=>loadAudit(),coach:()=>openCoach(),peptides:()=>loadPeptides(false),sports:()=>openSports(),godseye:()=>openGodsEye()};
 function showTab(t){
  document.querySelectorAll('.tile[data-t]').forEach(x=>x.classList.toggle('on',x.dataset.t===t));
  tabs.forEach(id=>{const el=document.getElementById('p-'+id);if(el)el.style.display=id===t?'block':'none';});
@@ -798,6 +811,14 @@ function renderPeptides(){
 /* ── SPORTS ── */
 function openSports(){const L=LINKS.sports||{url:'https://data.forgedbyfreedom.org/board.html'};const f=document.getElementById('sportsFrame');
  if(!f.src)f.src=L.url;document.getElementById('sportsOpen').href=L.url;}
+
+async function openGodsEye(){const f=document.getElementById('gevFrame'),st=document.getElementById('gevStatus'),tile=document.querySelector('[data-s="godseye"]');
+ if(f.src)return;
+ st.textContent='Starting the globe server…';
+ try{const r=await (await fetch(API+'/api/godseye/start',{method:'POST'})).json();
+  st.textContent=r.running?'Live':'Starting…';if(tile)tile.textContent=r.running?'Live 3D globe':'Starting…';
+  f.src=r.url||'http://localhost:4173';}
+ catch(e){st.textContent='Could not start — run godseye in a terminal';f.src='http://localhost:4173';}}
 
 /* light the brain while the market scanner runs a search */
 const _jarvisSearch=jarvisSearch;

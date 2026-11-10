@@ -446,6 +446,37 @@ def api_copy_reset():
 # ═══════════════════════════════════════════
 #  HUB: link tiles, tile status, AI Coach, peptide research
 # ═══════════════════════════════════════════
+# ── God's Eye View (local 3D globe, C:\Tools\gods-eye-view) ──────────────────
+GEV_URL = "http://localhost:4173"
+
+
+def _gev_up(timeout=1.5):
+    import socket
+    try:
+        with socket.create_connection(("127.0.0.1", 4173), timeout=timeout):
+            return True
+    except OSError:
+        return False
+
+
+@app.post("/api/godseye/start")
+def godseye_start():
+    """Start the God's Eye View dev server if it isn't running, then report status."""
+    import subprocess
+    if not _gev_up():
+        launcher = r"C:\Tools\gods-eye-view"
+        if not os.path.isdir(launcher):
+            raise HTTPException(404, "God's Eye View is not installed at C:\\Tools\\gods-eye-view")
+        flags = getattr(subprocess, "CREATE_NO_WINDOW", 0) | getattr(subprocess, "DETACHED_PROCESS", 0)
+        subprocess.Popen("npm run dev", cwd=launcher, shell=True, creationflags=flags,
+                         stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        for _ in range(30):
+            time.sleep(0.5)
+            if _gev_up():
+                break
+    return {"running": _gev_up(), "url": GEV_URL}
+
+
 @app.get("/api/hub/links")
 def api_hub_links():
     return hub.links()
