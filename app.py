@@ -477,6 +477,95 @@ def godseye_start():
     return {"running": _gev_up(), "url": GEV_URL}
 
 
+# ── Intel: supplier due diligence, contact verifier (anti-impersonation), batch check, peptide trends ──
+import intel
+
+
+class SupplierQ(BaseModel):
+    domain: str = ""
+    phone: str = ""
+    name: str = ""
+
+
+class ContactQ(BaseModel):
+    channel: str
+    value: str
+    claimed_person: str = ""
+
+
+class ContactAdd(BaseModel):
+    kind: str            # verified | scam
+    person: str = ""
+    company: str = ""
+    channel: str
+    value: str
+    note: str = ""
+
+
+class BatchAdd(BaseModel):
+    vendor: str
+    compound: str = ""
+    batch: str
+    lab: str = ""
+    report_id: str = ""
+    purity: str = ""
+    note: str = ""
+
+
+class BatchQ(BaseModel):
+    vendor: str
+    batch: str
+    compound: str = ""
+    lab: str = ""
+    report_id: str = ""
+
+
+@app.post("/api/intel/supplier")
+def intel_supplier(q: SupplierQ):
+    if not (q.domain or q.phone):
+        raise HTTPException(400, "Enter a website and/or phone number")
+    return intel.supplier_check(q.domain, q.phone, q.name, secret=hub._secret)
+
+
+@app.post("/api/intel/contact-check")
+def intel_contact_check(q: ContactQ):
+    return intel.contact_check(q.channel, q.value, q.claimed_person, secret=hub._secret)
+
+
+@app.get("/api/intel/contacts")
+def intel_contacts():
+    return intel.contacts_list()
+
+
+@app.post("/api/intel/contacts")
+def intel_contacts_add(q: ContactAdd):
+    try:
+        return intel.contacts_add(q.kind, q.person, q.company, q.channel.lower(), q.value, q.note)
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+
+
+@app.delete("/api/intel/contacts/{kind}/{idx}")
+def intel_contacts_del(kind: str, idx: int):
+    return intel.contacts_remove(kind, idx)
+
+
+@app.post("/api/intel/batches")
+def intel_batch_add(q: BatchAdd):
+    return intel.batch_add(q.vendor, q.compound, q.batch, q.lab, q.report_id, q.purity, q.note)
+
+
+@app.post("/api/intel/batch-check")
+def intel_batch_check(q: BatchQ):
+    return intel.batch_check(q.vendor, q.batch, q.compound, q.lab, q.report_id)
+
+
+@app.get("/api/intel/trends")
+def intel_trends(terms: str = "", refresh: bool = False):
+    t = [x for x in terms.split(",") if x.strip()] or None
+    return intel.peptide_trends(t, refresh)
+
+
 @app.get("/api/hub/links")
 def api_hub_links():
     return hub.links()

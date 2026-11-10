@@ -158,6 +158,20 @@ a{color:var(--cyan);text-decoration:none}
 .pep .meta{font-size:.7rem;color:var(--dim);margin-top:.25rem}
 .pep .tag{display:inline-block;font-size:.62rem;padding:.1rem .45rem;border-radius:8px;background:rgba(154,92,255,.15);color:#cdb8ff;margin-right:.3rem}
 .pep .new{background:rgba(0,255,136,.15);color:var(--green)}
+
+.iv-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:14px}
+.iv-card{border:1px solid var(--border);border-radius:10px;padding:14px;background:rgba(0,0,0,.25)}
+.iv-card h4{margin:0 0 4px;font-size:.85rem;letter-spacing:.08em;text-transform:uppercase;color:var(--cyan)}
+.iv-card p.d{margin:0 0 10px;color:var(--dim);font-size:.78rem}
+.iv-row{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px}
+.iv-row input,.iv-row select{flex:1;min-width:120px;background:#0a1222;border:1px solid var(--border);color:#e6edf7;border-radius:6px;padding:.5rem .6rem;font-size:.85rem}
+.iv-out{margin-top:10px;font-size:.82rem;line-height:1.5}
+.iv-verdict{display:inline-block;padding:.25rem .7rem;border-radius:999px;font-weight:800;letter-spacing:.06em;font-size:.75rem;margin-bottom:6px}
+.v-ok{background:#0f3d2a;color:#3ef08f}.v-warn{background:#3d300f;color:#ffc94a}.v-bad{background:#4a1010;color:#ff6b6b}.v-unk{background:#1c2638;color:#9fb3d1}
+.iv-out ul{margin:6px 0 0 18px;padding:0}.iv-out li{margin:2px 0}
+.iv-reg{width:100%;border-collapse:collapse;font-size:.78rem}.iv-reg td,.iv-reg th{border-bottom:1px solid var(--border);padding:5px 6px;text-align:left}
+.tr-table{width:100%;border-collapse:collapse;font-size:.8rem}.tr-table th,.tr-table td{padding:7px 8px;border-bottom:1px solid var(--border);text-align:left;white-space:nowrap}
+.mom-up{color:#3ef08f;font-weight:700}.mom-dn{color:#ff6b6b;font-weight:700}
 </style>
 </head>
 <body>
@@ -210,6 +224,8 @@ a{color:var(--cyan);text-decoration:none}
   <h4>Intel</h4>
   <div class="tiles">
    <div class="tile" data-t="godseye"><span class="ic">🌍</span><span class="tt">God's Eye View</span><span class="st" data-s="godseye">Live 3D globe</span></div>
+   <div class="tile hot" data-t="verify"><span class="ic">🛡️</span><span class="tt">Supplier &amp; Contact Check</span><span class="st">Spot fakes &amp; counterfeits</span></div>
+   <div class="tile" data-t="trends"><span class="ic">📊</span><span class="tt">Peptide Trends</span><span class="st" data-s="trends">World interest</span></div>
   </div>
  </div>
  <div class="dock-sec" style="--acc:212,169,58">
@@ -374,6 +390,37 @@ a{color:var(--cyan);text-decoration:none}
 <div class="pbody" style="padding:0"><iframe id="gevFrame" title="God's Eye View" allow="microphone; fullscreen; geolocation" style="width:100%;height:80vh;border:0;background:#000"></iframe></div></div>
 </div>
 
+<div id="p-verify" style="display:none">
+<div class="panel full"><div class="phead"><h3>Supplier &amp; Contact Check</h3><span style="color:var(--dim);font-size:12px">Verify businesses and contacts — catch impersonators and counterfeit batches</span></div>
+<div class="pbody"><div class="iv-grid">
+ <div class="iv-card"><h4>1 · Is this contact real?</h4><p class="d">Paste the number or handle that messaged you. Checked against your verified contacts, lookalikes and known scammers.</p>
+  <div class="iv-row"><select id="cvCh"><option>whatsapp</option><option>telegram</option><option>instagram</option><option>wechat</option><option>phone</option><option>email</option><option>website</option><option>signal</option><option>facebook</option><option>x</option></select>
+  <input id="cvVal" placeholder="+86 138… or @luna_peptides"></div>
+  <div class="iv-row"><input id="cvWho" placeholder="Who they claim to be (e.g. Luna)"><button class="btn btn-go" onclick="cvCheck()">Check</button></div>
+  <div class="iv-out" id="cvOut"></div></div>
+ <div class="iv-card"><h4>2 · Is this supplier legit?</h4><p class="d">Website and/or phone: domain age and owner, email setup, HTTPS, archive history, line type, FDA fraud database.</p>
+  <div class="iv-row"><input id="spDom" placeholder="supplier website"><input id="spPh" placeholder="phone (optional)"></div>
+  <div class="iv-row"><input id="spName" placeholder="company name (optional)"><button class="btn btn-go" onclick="spCheck()">Check</button></div>
+  <div class="iv-out" id="spOut"></div></div>
+ <div class="iv-card"><h4>3 · Is this batch genuine?</h4><p class="d">Compare a batch/lot number and lab report against the genuine batches you've recorded from the real vendor.</p>
+  <div class="iv-row"><input id="bcVen" placeholder="vendor"><input id="bcBatch" placeholder="batch / lot #"></div>
+  <div class="iv-row"><input id="bcCmp" placeholder="compound"><input id="bcLab" placeholder="lab (e.g. Janoshik)"><input id="bcRep" placeholder="report #"></div>
+  <div class="iv-row"><button class="btn btn-go" onclick="bcCheck()">Check batch</button><button class="btn btn-ghost" onclick="bcAdd()">Save as GENUINE batch</button></div>
+  <div class="iv-out" id="bcOut"></div></div>
+ <div class="iv-card" style="grid-column:1/-1"><h4>Your registry</h4><p class="d">Add each rep's real contact points once (verified), and flag fakes when you find them (scam).</p>
+  <div class="iv-row"><select id="rgKind"><option value="verified">verified</option><option value="scam">scam</option></select><input id="rgPerson" placeholder="person (Luna)"><input id="rgCo" placeholder="company">
+  <select id="rgCh"><option>whatsapp</option><option>telegram</option><option>instagram</option><option>wechat</option><option>phone</option><option>email</option><option>website</option><option>signal</option><option>facebook</option><option>x</option></select>
+  <input id="rgVal" placeholder="number / handle / email / site"><input id="rgNote" placeholder="note"><button class="btn btn-green" onclick="rgAdd()">Add</button></div>
+  <div id="rgList"></div></div>
+</div></div></div></div>
+
+<div id="p-trends" style="display:none">
+<div class="panel full"><div class="phead"><h3>Peptide Trends — worldwide</h3>
+<div style="display:flex;gap:8px"><input id="trTerms" style="min-width:320px;background:#0a1222;border:1px solid var(--border);color:#e6edf7;border-radius:6px;padding:.4rem .6rem" placeholder="retatrutide, BPC-157, … (blank = default list)"><button class="btn btn-go" onclick="loadTrends(true)">Refresh</button></div></div>
+<div class="pbody"><div id="trOut" style="overflow-x:auto">Loading…</div>
+<p style="color:var(--dim);font-size:.75rem;margin-top:10px">Search = Google Trends worldwide, last 4 weeks vs the 4 before. News = worldwide news articles (GDELT), last 30 days vs prior 30. Papers = PubMed this year vs last. Trials = new ClinicalTrials.gov registrations in 12 months. Refreshes every 6 hours.</p></div></div>
+</div>
+
 </div><!-- end .wrap -->
 
 <!-- ═══ TRADE MODAL ═══ -->
@@ -396,9 +443,9 @@ FBFNeural.mount(document.getElementById('heroCanvas'),{brainUrl:'/static/brain.b
 /* ═══ DASHBOARD ENGINE ═══ */
 const API='';
 setInterval(()=>{document.getElementById('clk').textContent=new Date().toLocaleTimeString();},1000);
-const tabs=['dashboard','stocks','crypto','dryrun','autotrade','advisory','signals','portfolio','backtest','audit','coach','peptides','sports','godseye'];
+const tabs=['dashboard','stocks','crypto','dryrun','autotrade','advisory','signals','portfolio','backtest','audit','coach','peptides','sports','godseye','verify','trends'];
 const loaders={dashboard:()=>loadDash(),stocks:()=>loadMarket('stock'),crypto:()=>loadMarket('crypto'),dryrun:()=>loadDry(),autotrade:()=>loadAT(),
- advisory:()=>loadAdvisory(),signals:()=>loadScan(),portfolio:()=>loadPF(),audit:()=>loadAudit(),coach:()=>openCoach(),peptides:()=>loadPeptides(false),sports:()=>openSports(),godseye:()=>openGodsEye()};
+ advisory:()=>loadAdvisory(),signals:()=>loadScan(),portfolio:()=>loadPF(),audit:()=>loadAudit(),coach:()=>openCoach(),peptides:()=>loadPeptides(false),sports:()=>openSports(),godseye:()=>openGodsEye(),verify:()=>rgLoad(),trends:()=>loadTrends(false)};
 function showTab(t){
  document.querySelectorAll('.tile[data-t]').forEach(x=>x.classList.toggle('on',x.dataset.t===t));
  tabs.forEach(id=>{const el=document.getElementById('p-'+id);if(el)el.style.display=id===t?'block':'none';});
@@ -819,6 +866,51 @@ async function openGodsEye(){const f=document.getElementById('gevFrame'),st=docu
   st.textContent=r.running?'Live':'Starting…';if(tile)tile.textContent=r.running?'Live 3D globe':'Starting…';
   f.src=r.url||'http://localhost:4173';}
  catch(e){st.textContent='Could not start — run godseye in a terminal';f.src='http://localhost:4173';}}
+
+
+/* ── Intel: contact verifier, supplier check, batch check, trends ── */
+const H=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const vClass=v=>/VERIFIED|MATCHES|LOW/.test(v)?'v-ok':/SCAM|HIGH|MISMATCH/.test(v)?'v-bad':/RISK|SUSPICIOUS|MEDIUM/.test(v)?'v-warn':'v-unk';
+async function ipost(u,b){const r=await fetch(API+u,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(b)});const j=await r.json();if(!r.ok)throw new Error(j.detail||'Request failed');return j;}
+const val=id=>document.getElementById(id).value.trim();
+async function cvCheck(){const o=document.getElementById('cvOut');o.textContent='Checking…';
+ try{const r=await ipost('/api/intel/contact-check',{channel:val('cvCh'),value:val('cvVal'),claimed_person:val('cvWho')});
+  o.innerHTML=`<span class="iv-verdict ${vClass(r.verdict)}">${H(r.verdict)}</span><ul>${r.reasons.map(x=>`<li>${H(x)}</li>`).join('')}</ul><p style="color:var(--dim);margin-top:6px">${H(r.advice)}</p>`
+   +`<button class="btn btn-red" style="margin-top:6px" onclick="flagScam()">Flag as scammer</button>`;}
+ catch(e){o.textContent=e.message;}}
+async function flagScam(){await ipost('/api/intel/contacts',{kind:'scam',person:val('cvWho'),company:'',channel:val('cvCh'),value:val('cvVal'),note:'flagged from contact check'});toast('Added to scammer list','ok');rgLoad();}
+async function spCheck(){const o=document.getElementById('spOut');o.textContent='Checking… (up to 30 s)';
+ try{const r=await ipost('/api/intel/supplier',{domain:val('spDom'),phone:val('spPh'),name:val('spName')});
+  o.innerHTML=`<span class="iv-verdict ${vClass(r.risk)}">RISK: ${H(r.risk)}</span>`
+   +(r.flags.length?`<div style="color:#ffb4a8;margin-top:4px">Red flags</div><ul>${r.flags.map(x=>`<li>${H(x)}</li>`).join('')}</ul>`:'')
+   +(r.good.length?`<div style="color:#8ff0c0;margin-top:4px">Good signs</div><ul>${r.good.map(x=>`<li>${H(x)}</li>`).join('')}</ul>`:'')
+   +`<p style="color:var(--dim);margin-top:6px">${H(r.note)}</p>`;}
+ catch(e){o.textContent=e.message;}}
+async function bcCheck(){const o=document.getElementById('bcOut');o.textContent='Checking…';
+ try{const r=await ipost('/api/intel/batch-check',{vendor:val('bcVen'),batch:val('bcBatch'),compound:val('bcCmp'),lab:val('bcLab'),report_id:val('bcRep')});
+  o.innerHTML=`<span class="iv-verdict ${vClass(r.verdict)}">${H(r.verdict)}</span><ul>${r.reasons.map(x=>`<li>${H(x)}</li>`).join('')}</ul><p style="color:var(--dim)">${H(r.advice)}</p>`;}
+ catch(e){o.textContent=e.message;}}
+async function bcAdd(){if(!val('bcVen')||!val('bcBatch'))return toast('Vendor and batch required','err');
+ await ipost('/api/intel/batches',{vendor:val('bcVen'),compound:val('bcCmp'),batch:val('bcBatch'),lab:val('bcLab'),report_id:val('bcRep')});toast('Genuine batch saved','ok');rgLoad();}
+async function rgAdd(){try{await ipost('/api/intel/contacts',{kind:val('rgKind'),person:val('rgPerson'),company:val('rgCo'),channel:val('rgCh'),value:val('rgVal'),note:val('rgNote')});
+ toast('Saved','ok');document.getElementById('rgVal').value='';rgLoad();}catch(e){toast(e.message,'err');}}
+async function rgDel(kind,i){await fetch(API+`/api/intel/contacts/${kind}/${i}`,{method:'DELETE'});rgLoad();}
+async function rgLoad(){const c=await (await fetch(API+'/api/intel/contacts')).json();
+ const row=(k,x,i)=>`<tr><td><span class="iv-verdict ${k==='scam'?'v-bad':'v-ok'}">${k}</span></td><td>${H(x.person)}</td><td>${H(x.company)}</td><td>${H(x.channel)}</td><td>${H(x.value)}</td><td style="color:var(--dim)">${H(x.note)} ${H(x.added)}</td><td><a href="#" onclick="rgDel('${k}',${i});return false">✕</a></td></tr>`;
+ const b=(c.batches||[]).map(x=>`<tr><td><span class="iv-verdict v-ok">batch</span></td><td colspan="2">${H(x.vendor)}</td><td>${H(x.compound)}</td><td>${H(x.batch)}</td><td style="color:var(--dim)">${H(x.lab)} ${H(x.report_id)} ${H(x.purity)} ${H(x.added)}</td><td></td></tr>`).join('');
+ document.getElementById('rgList').innerHTML=`<table class="iv-reg"><tr><th></th><th>Person</th><th>Company</th><th>Channel</th><th>Value</th><th>Note</th><th></th></tr>${(c.verified||[]).map((x,i)=>row('verified',x,i)).join('')}${(c.scam||[]).map((x,i)=>row('scam',x,i)).join('')}${b}</table>`
+  +((c.verified||[]).length?'':'<p style="color:var(--dim)">Start by adding Luna\'s real WhatsApp, Telegram and Instagram as <b>verified</b>.</p>');}
+let TR=null;
+async function loadTrends(force){const o=document.getElementById('trOut');if(TR&&!force)return;o.textContent='Pulling worldwide data… (first load ~1 min)';
+ const t=val('trTerms');
+ try{TR=await (await fetch(API+`/api/intel/trends?refresh=${force?'true':'false'}&terms=${encodeURIComponent(t)}`)).json();}catch(e){o.textContent='Failed: '+e.message;return;}
+ const spark=a=>{if(!a||!a.length)return '';const m=Math.max(...a,1),w=120,h=24;return `<svg width="${w}" height="${h}"><polyline fill="none" stroke="#3ec5ff" stroke-width="1.5" points="${a.map((v,i)=>`${(i/(a.length-1||1)*w).toFixed(1)},${(h-v/m*h).toFixed(1)}`).join(' ')}"/></svg>`;};
+ const mom=v=>v==null?'—':`<span class="${v>=0?'mom-up':'mom-dn'}">${v>=0?'▲':'▼'} ${Math.abs(v)}%</span>`;
+ o.innerHTML=(TR.google_error?`<p style="color:#ffc94a">${H(TR.google_error)}</p>`:'')+`<table class="tr-table"><tr><th>Compound</th><th>Search (12 mo)</th><th>Search Δ</th><th>News (90 d)</th><th>News Δ</th><th>Papers ${new Date().getFullYear()} / last yr</th><th>New trials 12 mo</th></tr>`
+  +TR.terms.map(r=>`<tr><td><b>${H(r.term)}</b></td><td>${spark(r.google&&r.google.series)}</td><td>${mom(r.momentum_search)}</td><td>${spark(r.news&&r.news.series)}</td><td>${mom(r.momentum_news)}</td>`
+   +`<td>${r.pubmed&&r.pubmed.this_year!=null?r.pubmed.this_year+' / '+r.pubmed.last_year:'—'}</td><td>${r.trials&&r.trials.new_12mo!=null?r.trials.new_12mo:'—'}</td></tr>`).join('')+'</table>'
+  +`<p style="color:var(--dim);font-size:.75rem">Updated ${H(TR.updated)}. Sorted by momentum.</p>`;
+ const top=TR.terms[0];const tl=document.querySelector('[data-s="trends"]');if(tl&&top)tl.textContent='Hot: '+top.term;}
 
 /* light the brain while the market scanner runs a search */
 const _jarvisSearch=jarvisSearch;
