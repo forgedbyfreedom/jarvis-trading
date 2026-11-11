@@ -477,6 +477,61 @@ def godseye_start():
     return {"running": _gev_up(), "url": GEV_URL}
 
 
+# ── Voice: speak coach answers in the FBF brand voice (local Chatterbox TTS, C:\AI\Chatterbox-TTS-Server) ──
+from fastapi.responses import Response
+
+TTS_URL = "http://127.0.0.1:8004"
+TTS_DIR = r"C:\AI\Chatterbox-TTS-Server"
+TTS_VOICE = os.environ.get("JARVIS_TTS_VOICE", "reference.wav")
+
+
+def _tts_up():
+    import socket
+    try:
+        with socket.create_connection(("127.0.0.1", 8004), timeout=1):
+            return True
+    except OSError:
+        return False
+
+
+class TTSBody(BaseModel):
+    text: str
+
+
+@app.get("/api/tts/status")
+def tts_status():
+    return {"running": _tts_up(), "voice": TTS_VOICE}
+
+
+@app.post("/api/tts/start")
+def tts_start():
+    """Start the local Chatterbox server (first start loads the model onto the GPU, ~30-60 s)."""
+    import subprocess
+    if not _tts_up():
+        py = os.path.join(TTS_DIR, "venv", "Scripts", "python.exe")
+        if not os.path.exists(py):
+            raise HTTPException(404, "Chatterbox not installed")
+        flags = getattr(subprocess, "CREATE_NO_WINDOW", 0) | getattr(subprocess, "DETACHED_PROCESS", 0)
+        subprocess.Popen([py, "server.py"], cwd=TTS_DIR, creationflags=flags,
+                         stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    return {"starting": True, "running": _tts_up()}
+
+
+@app.post("/api/tts")
+def tts(body: TTSBody):
+    if not _tts_up():
+        raise HTTPException(503, "Brand voice server not running")
+    import urllib.request as _u
+    req = _u.Request(TTS_URL + "/v1/audio/speech", method="POST", headers={"Content-Type": "application/json"},
+                     data=json.dumps({"model": "chatterbox", "input": body.text[:1200], "voice": TTS_VOICE,
+                                      "response_format": "mp3"}).encode())
+    try:
+        audio = _u.urlopen(req, timeout=120).read()
+    except Exception as e:
+        raise HTTPException(502, f"Voice generation failed: {e}")
+    return Response(content=audio, media_type="audio/mpeg")
+
+
 # ── Intel: supplier due diligence, contact verifier (anti-impersonation), batch check, peptide trends ──
 import intel
 

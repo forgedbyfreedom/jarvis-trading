@@ -172,6 +172,11 @@ a{color:var(--cyan);text-decoration:none}
 .iv-reg{width:100%;border-collapse:collapse;font-size:.78rem}.iv-reg td,.iv-reg th{border-bottom:1px solid var(--border);padding:5px 6px;text-align:left}
 .tr-table{width:100%;border-collapse:collapse;font-size:.8rem}.tr-table th,.tr-table td{padding:7px 8px;border-bottom:1px solid var(--border);text-align:left;white-space:nowrap}
 .mom-up{color:#3ef08f;font-weight:700}.mom-dn{color:#ff6b6b;font-weight:700}
+
+.talk-btn{background:#13233d!important;color:#9fd8ff!important;margin-right:6px}
+.talk-btn.on{background:linear-gradient(90deg,#ff3d3d,#ff8a00)!important;color:#fff!important;animation:talkpulse 1.6s infinite}
+@keyframes talkpulse{0%,100%{box-shadow:0 0 0 0 rgba(255,80,40,.55)}50%{box-shadow:0 0 0 10px rgba(255,80,40,0)}}
+.talk-state{font-size:.78rem;color:#9fd8ff;margin:6px 2px 0;min-height:1em}
 </style>
 </head>
 <body>
@@ -364,8 +369,10 @@ a{color:var(--cyan);text-decoration:none}
   <div class="coach-stage"><canvas id="coachCanvas" class="coach-bg"></canvas><div class="stage-status" id="coachStatus"></div></div>
   <div class="ask-shell" id="askShell">
    <textarea id="coachQ" rows="2" placeholder="Ask the FBF AI Coach: training, nutrition, peptides, bloodwork, protocols…"></textarea>
+   <button class="ask-go talk-btn" id="talkBtn" onclick="talkToggle()" title="Hands-free conversation">🎙 Talk</button>
    <button class="ask-go" id="coachGo" onclick="coachSend()">Ask ➜</button>
   </div>
+  <div class="talk-state" id="talkState"></div>
   <div class="coach-chips" id="coachChips"></div>
   <div class="coach-thread" id="coachThread"></div>
  </div>
@@ -817,7 +824,9 @@ function renderCoach(){
  :'';
  th.scrollTop=0;
 }
+let lastAnswer='';
 async function coachSend(){
+ lastAnswer='';
  const q=document.getElementById('coachQ'),go=document.getElementById('coachGo'),text=q.value.trim();if(!text)return;
  coachHist.push({role:'user',text});q.value='';go.disabled=true;
  coachHist.push({role:'ai',text:'Thinking…'});renderCoach();
@@ -826,12 +835,77 @@ async function coachSend(){
   const r=await fetch(API+'/api/coach',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({question:text,history:coachHist.slice(0,-2)})});
   const d=await r.json();coachHist.pop();
   if(!r.ok||d.error)coachHist.push({role:'ai',text:'⚠ '+(d.detail||d.error||'The coach could not answer.')});
-  else coachHist.push({role:'ai',text:d.answer,sources:(d.sources||[]).slice(0,5),grounded:d.grounded});
+  else{coachHist.push({role:'ai',text:d.answer,sources:(d.sources||[]).slice(0,5),grounded:d.grounded});lastAnswer=d.answer;}
  }catch(e){coachHist.pop();coachHist.push({role:'ai',text:'⚠ '+e.message});}
  finally{FBFNeural.thinking(false);document.getElementById('coachStatus').classList.remove('on');go.disabled=false;renderCoach();q.focus();}
 }
 function coachClear(){coachHist=[];renderCoach();}
 document.getElementById('coachQ').addEventListener('keydown',e=>{if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();coachSend();}});
+
+
+/* ── HANDS-FREE TALK: listen → send on pause → answer → speak (FBF voice) → listen again ── */
+const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
+let talkOn=false,rec=null,silenceT=null,speaking=false,busy=false,ttsMode='browser',curAudio=null;
+const PAUSE_MS=2200, PAUSE_MID_MS=3800;   // silence before sending; longer if the sentence sounds unfinished
+const TRAILING=/\b(and|but|so|or|um+|uh+|er+|like|because|cause|the|a|an|to|of|with|for|if|then|which|that|my|i|is|was|about|maybe|also)$/i;
+function talkSay(s){document.getElementById('talkState').textContent=s;}
+async function talkToggle(){
+ if(!SR){toast('Voice input needs Chrome or Edge','err');return;}
+ talkOn=!talkOn;document.getElementById('talkBtn').classList.toggle('on',talkOn);
+ document.getElementById('talkBtn').textContent=talkOn?'■ Stop':'🎙 Talk';
+ if(!talkOn){stopListening();stopSpeaking();talkSay('');return;}
+ ttsMode='browser';
+ startListening();}
+function startListening(){
+ if(!talkOn||speaking||busy)return;
+ rec=new SR();rec.lang='en-US';rec.continuous=true;rec.interimResults=true;
+ const q=document.getElementById('coachQ');let finalText='';
+ rec.onresult=e=>{let interim='';
+  for(let i=e.resultIndex;i<e.results.length;i++){const r=e.results[i];if(r.isFinal)finalText+=r[0].transcript+' ';else interim+=r[0].transcript;}
+  q.value=(finalText+interim).trim();talkSay('🎙 Listening… '+(q.value?'(pause to send)':''));
+  clearTimeout(silenceT);
+  if(q.value){const wait=(interim||TRAILING.test(q.value.replace(/[.,!?]+$/,'').trim()))?PAUSE_MID_MS:PAUSE_MS;silenceT=setTimeout(()=>sendSpoken(),wait);}};
+ rec.onerror=e=>{if(e.error==='not-allowed'){toast('Microphone blocked — allow it in the address bar','err');talkToggle();}};
+ rec.onend=()=>{if(talkOn&&!speaking&&!busy)setTimeout(startListening,250);};
+ try{rec.start();talkSay('🎙 Listening…');}catch(e){}
+}
+function stopListening(){clearTimeout(silenceT);if(rec){rec.onend=null;try{rec.stop();}catch(e){}rec=null;}}
+async function sendSpoken(){
+ const q=document.getElementById('coachQ');if(!q.value.trim()||busy)return;
+ const said=q.value.trim().toLowerCase();
+ if(/^(stop|stop talking|that's all|goodbye|end conversation)\.?$/.test(said)){q.value='';talkToggle();return;}
+ busy=true;stopListening();talkSay('🧠 Thinking…');
+ await coachSend();busy=false;
+ if(talkOn&&lastAnswer)await speak(lastAnswer);
+ if(talkOn){talkSay('🎙 Listening…');startListening();}
+}
+function speechText(a){ // what to say out loud: no citations/markdown, first few sentences
+ let t=a.replace(/\[@[^\]]*\]/g,'').replace(/\[[0-9,\s]+\]/g,'').replace(/[*_#>`|]/g,'')
+  .replace(/^\s*[-•]\s+/gm,'').replace(/([.!?:;])?\s*\n+\s*/g,(m,p)=>(p||'.')+' ')
+  .replace(/\s+([.,!?;:])/g,'$1').replace(/([.!?])[.]+/g,'$1').replace(/:\./g,':').replace(/\s+/g,' ').trim();
+ const s=t.match(/[^.!?]+[.!?]+|[^.!?]+$/g)||[t];let out='';for(const x of s){if((out+x).length>650)break;out+=x;}
+ return out||t.slice(0,650);
+}
+async function speak(answer){
+ const text=speechText(answer);if(!text)return;speaking=true;talkSay('🔊 Speaking… (tap Stop to interrupt)');
+ try{
+  if(ttsMode==='fbf'){
+   const r=await fetch(API+'/api/tts',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({text})});
+   if(r.ok){const url=URL.createObjectURL(await r.blob());await new Promise(res=>{curAudio=new Audio(url);curAudio.onended=res;curAudio.onerror=res;curAudio.play().catch(res);});speaking=false;return;}
+   ttsMode='browser';
+  }
+  await new Promise(res=>{const u=new SpeechSynthesisUtterance(text);u.rate=1.0;u.pitch=1.0;
+   const v=britishVoice();if(v){u.voice=v;u.lang=v.lang;}else u.lang='en-GB';
+   u.onend=res;u.onerror=res;speechSynthesis.speak(u);});
+ }finally{speaking=false;curAudio=null;}
+}
+// Best British female voice available: Edge neural voices first, then Chrome's, then any en-GB female.
+const UK_FEMALE=[/Sonia.*Natural/i,/Libby.*Natural/i,/Maisie.*Natural/i,/Abbi|Bella|Hollie|Olivia.*Natural/i,/Google UK English Female/i,/Microsoft Hazel/i,/Microsoft Susan/i,/Serena|Kate|Stephanie|Martha/i];
+function britishVoice(){const vs=speechSynthesis.getVoices();
+ for(const re of UK_FEMALE){const v=vs.find(v=>re.test(v.name));if(v)return v;}
+ return vs.find(v=>/en-GB/i.test(v.lang)&&!/\bMale\b|George|Ryan|Thomas|Daniel|Arthur|Oliver|Alfie|Elliot|Ethan|Noah/i.test(v.name))||vs.find(v=>/en-GB/i.test(v.lang))||null;}
+if('speechSynthesis' in window)speechSynthesis.onvoiceschanged=()=>{const v=britishVoice();if(v)console.log('[talk] voice:',v.name);};
+function stopSpeaking(){try{speechSynthesis.cancel();}catch(e){}if(curAudio){curAudio.pause();curAudio=null;}speaking=false;}
 
 /* ── PEPTIDE RESEARCH ── */
 let PEP=null,pepFilter=null;
