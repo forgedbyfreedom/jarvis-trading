@@ -1045,11 +1045,11 @@ async function fcLoad(){
  const tile=document.querySelector('[data-s="clients"]');
  document.getElementById('fcConnect').style.display=s.connected?'none':'block';
  document.getElementById('fcMain').style.display=s.connected?'block':'none';
- document.getElementById('fcStatus').textContent=s.connected?`${s.clients} clients · updated ${s.updated_at?new Date(s.updated_at).toLocaleTimeString():'—'}${s.error?' · ⚠ '+s.error:''}`:'Not connected';
+ document.getElementById('fcStatus').textContent=s.connected?`${s.clients} clients · updated ${s.updated_at?new Date(s.updated_at).toLocaleTimeString():'—'} · plans: ${s.plans}${s.error?' · ⚠ '+s.error:''}`:'Not connected';
  if(tile)tile.textContent=s.connected?`${s.clients} clients · ${d.alerts.filter(a=>a.severity==='high'||a.severity==='medium').length} alerts`:'Connect the FBF app';
  if(!s.connected)return;
  document.getElementById('fcAlerts').innerHTML=d.alerts.length?d.alerts.map(a=>`<div style="margin:4px 0"><span class="${sevC[a.severity]||'v-unk'}" style="padding:1px 6px;border-radius:5px;font-size:.7rem;text-transform:uppercase">${a.severity}</span> ${H(a.message)}</div>`).join(''):'<span style="color:var(--dim)">No alerts — everyone is on track.</span>';
- document.getElementById('fcTable').innerHTML=`<table class="iv-reg"><tr><th>Client</th><th>Workouts</th><th>Meals</th><th>Water</th><th>Supps</th><th>Check-in</th><th>Weight</th><th>lbs/wk</th><th>Alerts</th></tr>${d.clients.map(c=>`<tr style="cursor:pointer" onclick="fcDetail(${c.id})"><td>${H(c.name)}</td><td>${H(c.workouts)}</td><td>${pc(c.meal_pct)}</td><td>${pc(c.water_pct)}</td><td>${pc(c.supp_pct)}</td><td>${H(c.checkin)}${c.last_checkin_at?' · '+c.last_checkin_at.slice(5,10):''}</td><td>${c.weight??'—'}</td><td>${c.weight_wk==null?'—':(c.weight_wk>0?'+':'')+c.weight_wk}</td><td>${c.alerts||''}</td></tr>`).join('')}</table>`;
+ document.getElementById('fcTable').innerHTML=`<table class="iv-reg"><tr><th>Client</th><th>Workouts</th><th>Meals</th><th>Water</th><th>Supps</th><th>Check-in</th><th>Weight</th><th>lbs/wk</th><th>Daily targets</th><th>Alerts</th></tr>${d.clients.map(c=>`<tr style="cursor:pointer" onclick="fcDetail(${c.id})"><td>${H(c.name)}</td><td>${H(c.workouts)}</td><td>${pc(c.meal_pct)}</td><td>${pc(c.water_pct)}</td><td>${pc(c.supp_pct)}</td><td>${H(c.checkin)}${c.last_checkin_at?' · '+c.last_checkin_at.slice(5,10):''}</td><td>${c.weight??'—'}</td><td>${c.weight_wk==null?'—':(c.weight_wk>0?'+':'')+c.weight_wk}</td><td style="font-size:.72rem">${H(c.targets||'—')}</td><td>${c.alerts||''}</td></tr>`).join('')}</table>`;
 }
 async function fcDetail(id){
  const c=await (await fetch(API+'/api/fbf/clients/'+id)).json(),a=c.adherence,p=c.progress,el=document.getElementById('fcDetail');
@@ -1061,6 +1061,11 @@ async function fcDetail(id){
   ${p.scores_avg_4wk?`<div style="margin-top:6px;color:var(--dim)">Check-in scores (4 wk avg): ${Object.entries(p.scores_avg_4wk).map(([k,v])=>k+' '+v).join(' · ')}</div>`:''}
   ${p.latest_bloodwork&&p.latest_bloodwork.flagged.length?`<div style="margin-top:6px">Bloodwork flags: ${H(p.latest_bloodwork.flagged.join(', '))}</div>`:''}
   ${a.off_plan_days.length?`<div style="margin-top:6px;color:var(--dim)">Off-plan days: ${a.off_plan_days.map(o=>o.day.slice(5)+' ('+H(o.shortfalls.join(', '))+')').join(' · ')}</div>`:''}
+  ${(()=>{const pl=c.plan;if(!pl)return '<div style="margin-top:6px;color:var(--dim)">Plan: install the FBF Athena Bridge plugin to see targets, supplements and training.</div>';const dt=pl.daily_targets;
+    return `<div style="margin-top:8px"><b>Plan</b>${pl.membership?' · '+H(pl.membership):''}${pl.meal_plan_current===false?' · <span class="v-warn" style="padding:1px 6px;border-radius:5px">meal plan rebuilding</span>':''}</div>
+    <div>${dt?`Daily targets: ${dt.calories} kcal · protein ${dt.protein_g} g · carbs ${dt.carbs_g} g · fat ${dt.fat_g} g`:'No meal-plan targets yet'}</div>
+    ${pl.supplements&&pl.supplements.length?`<div style="color:var(--dim)">Supplements/protocol: ${H(pl.supplements.join(' · '))}</div>`:''}
+    ${pl.training_week&&pl.training_week.length?`<div style="color:var(--dim)">Training: ${pl.training_week.map(d=>H((d.day||'')+(d.focus&&d.focus!==d.day?' – '+d.focus:''))).join(' · ')}</div>`:''}`;})()}
   ${c.latest_checkin&&c.latest_checkin.fields?`<div style="margin-top:6px;color:var(--dim)">Latest check-in ${c.latest_checkin.at.slice(0,10)}: ${H(Object.entries(c.latest_checkin.fields).filter(([k])=>!['scores'].includes(k)).map(([k,v])=>k.replace('_',' ')+': '+v).join(' · '))}</div>`:''}
   <div style="margin-top:8px"><button class="btn btn-go" onclick="showTab('coach');document.getElementById('coachQ').value='How is ${H(c.name).replace(/'/g,'')} doing? Give me a coaching read and what I should change.';coachSend()">Ask Athena about ${H(c.name.split(' ')[0])}</button></div>`;
  el.scrollIntoView({behavior:'smooth',block:'nearest'});

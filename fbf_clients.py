@@ -266,6 +266,8 @@ def refresh() -> dict:
     with _lock:
         try:
             roster = _get("/coach/clients").get("clients", [])
+            if _plan_endpoint["ok"] is False:
+                _plan_endpoint["ok"] = None  # re-check each cycle, so installing the plugin needs no restart
             clients, alerts = {}, []
             for c in roster:
                 try:
@@ -275,8 +277,10 @@ def refresh() -> dict:
                 except Exception as e:
                     log.warning("client %s: %s", c.get("id"), e)
                     continue
+                plan = _plan(c["id"])
                 snap = {
                     "id": c["id"], "name": c["name"], "email": c.get("email"),
+                    "plan": plan,
                     "coach": c.get("coach_name"), "app_alerts_7d": c.get("alerts_7d"),
                     "adherence": adherence(det.get("daily", []), det.get("checkins", [])),
                     "progress": progress(det.get("checkins", []), det.get("bloodwork", [])),
@@ -300,6 +304,51 @@ def refresh() -> dict:
             _state["error"] = f"Refresh failed: {e}"
             log.warning("FBF refresh failed: %s", e)
         return status()
+
+
+_plan_endpoint = {"ok": None}
+
+
+def _fmt_item(x):
+    if isinstance(x, dict):
+        name = x.get("name") or x.get("item") or x.get("title") or ""
+        rest = ", ".join(f"{v}" for k, v in x.items() if k not in ("name", "item", "title", "id", "checked") and v not in (None, "", [], {}))
+        return f"{name} ({rest})" if rest else str(name)
+    return str(x)
+
+
+def _plan(cid) -> dict | None:
+    """Client's current plan from the FBF Athena Bridge plugin (None if the plugin isn't installed)."""
+    if _plan_endpoint["ok"] is False:
+        return None
+    try:
+        d = _get(f"/coach/clients/{cid}/plan")
+    except SessionExpired:
+        raise
+    except requests.HTTPError as e:
+        if e.response is not None and e.response.status_code == 404 and "rest_no_route" in (e.response.text or ""):
+            _plan_endpoint["ok"] = False
+            log.info("FBF Athena Bridge plugin not installed — plans unavailable")
+        return None
+    except Exception as e:
+        log.warning("plan %s: %s", cid, e)
+        return None
+    _plan_endpoint["ok"] = True
+    week = []
+    for day in d.get("training_week") or []:
+        if isinstance(day, dict):
+            ex = [(_fmt_item(e) if not isinstance(e, dict) else (e.get("name") or "")) for e in (day.get("exercises") or [])]
+            week.append({"day": day.get("day") or day.get("name") or day.get("title"), "focus": day.get("focus") or day.get("title"),
+                         "exercises": [e for e in ex if e][:10]})
+    return {
+        "membership": d.get("membership"),
+        "daily_targets": d.get("daily_targets"),
+        "supplements": [_fmt_item(s) for s in (d.get("supplements") or [])][:30],
+        "training_week": week,
+        "meal_plan_current": d.get("meal_plan_current"),
+        "program_source": d.get("program_source"),
+        "program_text": (d.get("program_text") or "")[:20000] or None,
+    }
 
 
 def _checkin_brief(checkins):
@@ -335,7 +384,8 @@ def status() -> dict:
     return {"connected": bool(s.get("token")), "coach": (s.get("user") or {}).get("name"),
             "clients": len(_state["clients"]), "alerts": len(_state["alerts"]),
             "new_alerts": _state.get("new_alerts", 0), "updated_at": _state["updated_at"],
-            "error": _state["error"], "poll_minutes": POLL_MIN}
+            "error": _state["error"], "poll_minutes": POLL_MIN,
+            "plans": {True: "connected", False: "install the FBF Athena Bridge plugin", None: "not checked yet"}[_plan_endpoint["ok"]]}
 
 
 def clients() -> list:
@@ -349,8 +399,15 @@ def clients() -> list:
                     "last_checkin_at": a["last_checkin_at"],
                     "weight": (p.get("weight_latest") or {}).get("value"),
                     "weight_wk": (p.get("weight_change_per_week") or {}).get("value"),
+                    "targets": _targets_str((c.get("plan") or {}).get("daily_targets")),
                     "alerts": sum(1 for x in _state["alerts"] if x["client_id"] == c["id"] and x["severity"] in ("high", "medium"))})
     return sorted(out, key=lambda x: (-x["alerts"], x["name"].lower()))
+
+
+def _targets_str(dt):
+    if not dt:
+        return None
+    return f"{dt.get('calories')} kcal · P{dt.get('protein_g')} C{dt.get('carbs_g')} F{dt.get('fat_g')}"
 
 
 def client(cid) -> dict | None:
@@ -389,11 +446,18 @@ def athena_context(q: str) -> tuple[str, bool]:
     if _state.get("error"):
         head += f"\nNOTE: last refresh problem — {_state['error']}"
     if named:
-        body = "\n\n".join(json.dumps({k: v for k, v in c.items() if k != "email"}, default=str) for c in named[:3])
+        def brief(c):
+            d = {k: v for k, v in c.items() if k not in ("email", "plan")}
+            pl = dict(c.get("plan") or {})
+            if pl.get("program_text"):
+                pl["program_text"] = pl["program_text"][: (3500 if len(named) == 1 else 1200)]
+            d["plan"] = pl or "not available"
+            return json.dumps(d, default=str)
+        body = "\n\n".join(brief(c) for c in named[:3])
         al = [a["message"] for a in _state["alerts"] if a["client_id"] in {c["id"] for c in named}]
         return (f"{head}\n{body}\nALERTS: {al or 'none'}", True)
     rows = clients()
     lines = [f"- {r['name']}: workouts {r['workouts']}, meals {r['meal_pct']}%, water {r['water_pct']}%, supps {r['supp_pct']}%, "
-             f"check-in {r['checkin']}, weight {r['weight']} lbs ({r['weight_wk']} lbs/wk)" for r in rows]
+             f"check-in {r['checkin']}, weight {r['weight']} lbs ({r['weight_wk']} lbs/wk), targets {r.get('targets') or 'n/a'}" for r in rows]
     al = [f"[{a['severity']}] {a['message']}" for a in _state["alerts"][:25]]
     return (f"{head}\nROSTER (14-day adherence):\n" + "\n".join(lines) + "\nALERTS:\n" + ("\n".join(al) or "none"), True)
