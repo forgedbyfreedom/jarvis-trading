@@ -398,10 +398,12 @@ a{color:var(--cyan);text-decoration:none}
 </div>
 
 <div id="p-godseye" style="display:none">
-<div class="panel full"><div class="phead"><h3>God's Eye View</h3>
-<div style="display:flex;gap:8px;align-items:center"><span id="gevStatus" style="color:var(--dim);font-size:12px"></span>
-<a class="btn btn-ghost" href="http://localhost:4173" target="_blank">Open full screen ↗</a></div></div>
-<div class="pbody" style="padding:0"><iframe id="gevFrame" title="God's Eye View" allow="microphone; fullscreen; geolocation" style="width:100%;height:80vh;border:0;background:#000"></iframe></div></div>
+<div class="panel full"><div class="phead"><h3>God's Eye View</h3><span id="gevStatus" style="color:var(--dim);font-size:12px"></span></div>
+<div class="pbody" style="text-align:center;padding:40px 20px">
+<div style="font-size:54px">🌍</div>
+<p style="color:var(--dim);max-width:520px;margin:10px auto 20px">The live 3D globe opens in its own window — it blocks being embedded inside other pages for security, so it can't sit inside this tab.</p>
+<button class="btn" onclick="gevOpen()">Open God's Eye View ↗</button>
+</div></div>
 </div>
 
 <div id="p-verify" style="display:none">
@@ -980,13 +982,13 @@ function renderPeptides(){
 function openSports(){const L=LINKS.sports||{url:'https://data.forgedbyfreedom.org/board.html'};const f=document.getElementById('sportsFrame');
  if(!f.src)f.src=L.url;document.getElementById('sportsOpen').href=L.url;}
 
-async function openGodsEye(){const f=document.getElementById('gevFrame'),st=document.getElementById('gevStatus'),tile=document.querySelector('[data-s="godseye"]');
- if(f.src)return;
+let gevUrl='http://127.0.0.1:4173',gevWin=null;
+async function openGodsEye(){const st=document.getElementById('gevStatus'),tile=document.querySelector('[data-s="godseye"]');
  st.textContent='Starting the globe server…';
- try{const r=await (await fetch(API+'/api/godseye/start',{method:'POST'})).json();
-  st.textContent=r.running?'Live':'Starting…';if(tile)tile.textContent=r.running?'Live 3D globe':'Starting…';
-  f.src=r.url||'http://localhost:4173';}
- catch(e){st.textContent='Could not start — run godseye in a terminal';f.src='http://localhost:4173';}}
+ try{const r=await (await fetch(API+'/api/godseye/start',{method:'POST'})).json();gevUrl=(r.url||gevUrl).replace('localhost','127.0.0.1');
+  st.textContent=r.running?'● Running':'Still starting — give it a few seconds';if(tile)tile.textContent=r.running?'Live 3D globe':'Starting…';}
+ catch(e){st.textContent='Could not start the globe server';}}
+function gevOpen(){if(gevWin&&!gevWin.closed){gevWin.focus();return;}gevWin=window.open(gevUrl,'godseye','width=1600,height=950');}
 
 
 /* ── Intel: contact verifier, supplier check, batch check, trends ── */

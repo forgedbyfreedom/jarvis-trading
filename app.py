@@ -514,7 +514,7 @@ def api_copy_reset():
 #  HUB: link tiles, tile status, AI Coach, peptide research
 # ═══════════════════════════════════════════
 # ── God's Eye View (local 3D globe, C:\Tools\gods-eye-view) ──────────────────
-GEV_URL = "http://localhost:4173"
+GEV_URL = "http://127.0.0.1:4173"
 
 
 def _gev_up(timeout=1.5):

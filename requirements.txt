@@ -14,3 +14,4 @@ faster-whisper==1.2.1
 av==15.1.0  # av 16+ breaks faster-whisper decode_audio
 nvidia-cublas-cu12
 nvidia-cudnn-cu12==9.*
+edge-tts
