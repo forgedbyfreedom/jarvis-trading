@@ -775,6 +775,17 @@ class CoachReq(BaseModel):
     question: str
     history: list = []
 
+@app.post("/api/coach/stream")
+def api_coach_stream(req: CoachReq):
+    """NDJSON stream so Athena can start speaking while the answer is still being written."""
+    import json as _json
+    from fastapi.responses import StreamingResponse
+    if not req.question.strip():
+        raise HTTPException(400, "Ask a question")
+    gen = (_json.dumps(ev) + "\n" for ev in hub.coach_stream(req.question, req.history))
+    return StreamingResponse(gen, media_type="application/x-ndjson", headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"})
+
+
 @app.post("/api/coach")
 def api_coach(req: CoachReq):
     if not req.question.strip():

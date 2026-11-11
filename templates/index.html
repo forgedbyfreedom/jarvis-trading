@@ -835,19 +835,36 @@ function renderCoach(){
  th.scrollTop=0;
 }
 let lastAnswer='';
-async function coachSend(){
+const ACKS=['Let me check your library.','Checking the research.','One sec, pulling the research.','Looking that up.'];
+async function coachSend(voice){
  lastAnswer='';
  const q=document.getElementById('coachQ'),go=document.getElementById('coachGo'),text=q.value.trim();if(!text)return;
  coachHist.push({role:'user',text});q.value='';go.disabled=true;
- coachHist.push({role:'ai',text:'Thinking…'});renderCoach();
+ const msg={role:'ai',text:'Thinking…'};coachHist.push(msg);renderCoach();
  FBFNeural.thinking(true);const cs=document.getElementById('coachStatus');cs.textContent='Searching the research library';cs.classList.add('on');
+ if(voice){sayQueue.push(ACKS[Math.floor(Math.random()*ACKS.length)]);talkSay('📚 Athena is checking your library…');}
+ let full='',buf='',lastPaint=0;
+ const feed=(final)=>{ // hand finished sentences to the voice as they arrive
+  if(!voice)return;
+  for(;;){const m=buf.match(/^([\s\S]*?(?:[.!?](?=\s)|\n))/);
+   if(!m)break; if(!final&&m[1].length<25&&buf.length<200&&!/\n/.test(m[1])){const m2=buf.match(/^([\s\S]{25,}?(?:[.!?](?=\s)|\n))/);if(!m2)break;sayQueue.push(m2[1]);buf=buf.slice(m2[1].length);continue;}
+   sayQueue.push(m[1]);buf=buf.slice(m[1].length);}
+  if(final&&buf.trim()){sayQueue.push(buf);buf='';}
+ };
  try{
-  const r=await fetch(API+'/api/coach',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({question:text,history:coachHist.slice(0,-2)})});
-  const d=await r.json();coachHist.pop();
-  if(!r.ok||d.error)coachHist.push({role:'ai',text:'⚠ '+(d.detail||d.error||'The coach could not answer.')});
-  else{coachHist.push({role:'ai',text:d.answer,sources:(d.sources||[]).slice(0,5),grounded:d.grounded});lastAnswer=d.answer;}
- }catch(e){coachHist.pop();coachHist.push({role:'ai',text:'⚠ '+e.message});}
- finally{FBFNeural.thinking(false);document.getElementById('coachStatus').classList.remove('on');go.disabled=false;renderCoach();q.focus();}
+  const r=await fetch(API+'/api/coach/stream',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({question:text,history:coachHist.slice(0,-2)})});
+  if(!r.ok){const d=await r.json().catch(()=>({}));throw new Error(d.detail||('HTTP '+r.status));}
+  const rd=r.body.getReader(),dec=new TextDecoder();let pend='';
+  for(;;){const {value,done}=await rd.read();if(done)break;pend+=dec.decode(value,{stream:true});
+   let i;while((i=pend.indexOf('\n'))>=0){const line=pend.slice(0,i);pend=pend.slice(i+1);if(!line.trim())continue;const ev=JSON.parse(line);
+    if(ev.sources){msg.sources=ev.sources.slice(0,5);msg.grounded=ev.grounded;cs.textContent='Athena is writing';if(voice)talkSay('🔊 Athena is answering… (tap Stop to interrupt)');}
+    else if(ev.delta){full+=ev.delta;buf+=ev.delta;msg.text=full;feed(false);
+     if(Date.now()-lastPaint>150){renderCoach();lastPaint=Date.now();}}
+    else if(ev.error)throw new Error(ev.error);}}
+  feed(true);
+  msg.text=full.trim()||'⚠ The coach returned no answer.';lastAnswer=full.trim();
+ }catch(e){msg.text='⚠ '+e.message;msg.sources=null;}
+ finally{FBFNeural.thinking(false);cs.classList.remove('on');go.disabled=false;renderCoach();if(!voice)q.focus();}
 }
 function coachClear(){coachHist=[];renderCoach();}
 document.getElementById('coachQ').addEventListener('keydown',e=>{if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();coachSend();}});
@@ -917,41 +934,46 @@ async function sendSpoken(){
  const said=q.value.trim().toLowerCase().replace(/[.!?,]+$/,'');
  if(/^(stop|stop talking|that's all|that is all|goodbye|bye|end conversation|thanks athena|thank you athena|bye athena|goodbye athena|goodnight athena|good night athena)$/.test(said)){q.value='';await speak('Anytime, Bryan.');talkToggle();return;}
  busy=true;talkSay('🧠 Athena is thinking…');
- await coachSend();busy=false;
- if(talkOn&&lastAnswer)await speak(lastAnswer);
+ await coachSend(true);busy=false;
+ await sayQueue.drained();
  if(talkOn)startListening();
 }
-function speechText(a){ // what to say out loud: no citations/markdown, first few sentences
- let t=a.replace(/\[@[^\]]*\]/g,'').replace(/\[[0-9,\s]+\]/g,'').replace(/[*_#>`|]/g,'')
-  .replace(/^\s*[-•]\s+/gm,'').replace(/([.!?:;])?\s*\n+\s*/g,(m,p)=>(p||'.')+' ')
-  .replace(/\s+([.,!?;:])/g,'$1').replace(/([.!?])[.]+/g,'$1').replace(/:\./g,':').replace(/\s+/g,' ').trim();
- const s=t.match(/[^.!?]+[.!?]+|[^.!?]+$/g)||[t];let out='';for(const x of s){if((out+x).length>650)break;out+=x;}
- return out||t.slice(0,650);
+function speechClean(a){ // what to say out loud: no citations, markdown or list symbols
+ return (a||'').replace(/\[@[^\]]*\]/g,'').replace(/\[[0-9,\s]+\]/g,'').replace(/^#+\s*/gm,'').replace(/[*_#>`|]/g,'')
+  .replace(/^\s*[-•]\s+/gm,'').replace(/^\s*\d+\.\s+(?=[A-Z])/gm,'').replace(/\s*\n+\s*/g,'. ').replace(/(\d)\s*[–-]\s*(\d)/g,'$1 to $2')
+  .replace(/\bg\/lb\b/g,'grams per pound').replace(/\bmg\/week\b/g,'milligrams a week').replace(/\bkcal\b/g,'calories')
+  .replace(/\s+([.,!?;:])/g,'$1').replace(/([.!?:])\.+/g,'$1').replace(/\s+/g,' ').trim();
 }
+function speechText(a){return speechClean(a);}   // kept for older callers
 async function voicesReady(){if(speechSynthesis.getVoices().length)return;
  await new Promise(r=>{const done=()=>{speechSynthesis.removeEventListener('voiceschanged',done);r();};speechSynthesis.addEventListener('voiceschanged',done);setTimeout(r,3000);});}
-async function playAudio(blob){const url=URL.createObjectURL(blob);
- await new Promise(res=>{curAudio=new Audio(url);curAudio.onended=res;curAudio.onerror=res;curAudio.play().catch(res);});URL.revokeObjectURL(url);}
-async function speak(answer){
- const text=speechText(answer);if(!text)return;speaking=true;talkSay('🔊 Athena is speaking… (tap Stop to interrupt)');
- try{
-  // Athena's real voice: British female neural voice generated on the PC
-  try{const r=await fetch(API+'/api/say',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({text})});
-   if(r.ok){await playAudio(await r.blob());return;}}catch(e){}
-  // offline fallback only: a browser voice, never the male default if a female one exists
-  await voicesReady();
-  await new Promise(res=>{const u=new SpeechSynthesisUtterance(text);
-   const v=britishVoice();if(v){u.voice=v;u.lang=v.lang;}else u.lang='en-GB';
-   u.onend=res;u.onerror=res;speechSynthesis.speak(u);});
- }finally{speaking=false;curAudio=null;}
-}
+function fetchSay(text){ // British neural voice made on the PC; null if it can't be made
+ return fetch(API+'/api/say',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({text})})
+  .then(r=>r.ok?r.blob():null).catch(()=>null);}
+async function playBlob(blob){const url=URL.createObjectURL(blob);
+ await new Promise(res=>{curAudio=new Audio(url);curAudio.onended=res;curAudio.onerror=res;curAudio.play().catch(res);});URL.revokeObjectURL(url);curAudio=null;}
+async function browserSay(text){await voicesReady();
+ await new Promise(res=>{const u=new SpeechSynthesisUtterance(text);const v=britishVoice();if(v){u.voice=v;u.lang=v.lang;}else u.lang='en-GB';u.onend=res;u.onerror=res;speechSynthesis.speak(u);});}
+// Sentences go in as they're written; the next clips are prepared while the current one plays.
+const sayQueue={items:[],running:false,gen:0,waiters:[],
+ push(text){const t=speechClean(text);if(!t||!/[a-z0-9]/i.test(t))return;const it={text:t,audio:null};this.items.push(it);
+  if(this.items.filter(x=>x.audio).length<3)it.audio=fetchSay(t);if(!this.running)this.run();},
+ async run(){this.running=true;speaking=true;const g=this.gen;
+  while(this.items.length&&g===this.gen){const it=this.items.shift();
+   this.items.slice(0,2).forEach(n=>{if(!n.audio)n.audio=fetchSay(n.text);});   // prefetch next two
+   const blob=await(it.audio||fetchSay(it.text));if(g!==this.gen)break;
+   if(blob)await playBlob(blob);else await browserSay(it.text);}
+  if(g===this.gen){this.running=false;speaking=false;const w=this.waiters;this.waiters=[];w.forEach(f=>f());}},
+ drained(){return (!this.running&&!this.items.length)?Promise.resolve():new Promise(r=>this.waiters.push(r));},
+ stop(){this.gen++;this.items=[];this.running=false;speaking=false;const w=this.waiters;this.waiters=[];w.forEach(f=>f());}};
+async function speak(answer){sayQueue.push(answer);await sayQueue.drained();}
 // Best British female voice available: Edge neural voices first, then Chrome's, then any en-GB female.
 const UK_FEMALE=[/Sonia.*Natural/i,/Libby.*Natural/i,/Maisie.*Natural/i,/Abbi|Bella|Hollie|Olivia.*Natural/i,/Google UK English Female/i,/Microsoft Hazel/i,/Microsoft Susan/i,/Serena|Kate|Stephanie|Martha/i,/Microsoft Zira/i,/Aria.*Natural|Jenny.*Natural/i];
 function britishVoice(){const vs=speechSynthesis.getVoices();
  for(const re of UK_FEMALE){const v=vs.find(v=>re.test(v.name));if(v)return v;}
  return vs.find(v=>/en-GB/i.test(v.lang)&&!/\bMale\b|George|Ryan|Thomas|Daniel|Arthur|Oliver|Alfie|Elliot|Ethan|Noah/i.test(v.name))||vs.find(v=>/en-GB/i.test(v.lang))||null;}
 if('speechSynthesis' in window){speechSynthesis.getVoices();speechSynthesis.addEventListener('voiceschanged',()=>{const v=britishVoice();if(v)console.log('[talk] voice:',v.name);});}
-function stopSpeaking(){try{speechSynthesis.cancel();}catch(e){}if(curAudio){curAudio.pause();curAudio=null;}speaking=false;}
+function stopSpeaking(){sayQueue.stop();try{speechSynthesis.cancel();}catch(e){}if(curAudio){const a=curAudio;curAudio=null;a.pause();if(a.onended)a.onended();}speaking=false;}
 
 
 /* floating Athena button: on any screen, open the coach and start/stop the conversation */

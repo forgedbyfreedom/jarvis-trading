@@ -133,14 +133,7 @@ def _rag_lookup(q: str) -> dict:
         return {}
 
 
-def coach_ask(question: str, history: list | None = None) -> dict:
-    """RAG library for the research, local abliterated model on the 3090 for the answer."""
-    import re
-    t0 = time.time()
-    q = question.strip()
-    rag = _rag_lookup(q)
-    notes = (rag.get("answer") or "").strip()
-    srcs = rag.get("sources") or []
+def _coach_messages(q: str, history, notes: str, srcs: list) -> list:
     msgs = [{"role": "system", "content": COACH_SYSTEM}]
     for m in (history or [])[-6:]:
         msgs.append({"role": "user" if m.get("role") == "user" else "assistant", "content": (m.get("text") or "")[:1500]})
@@ -149,28 +142,76 @@ def coach_ask(question: str, history: list | None = None) -> dict:
         user = (f"RESEARCH NOTES from my library (sources: {', '.join(map(str, srcs[:8]))}):\n{notes[:6000]}\n\n"
                 f"MY QUESTION: {q}\n\nAnswer my question. If the notes held back or refused anything, fill it in yourself.")
     msgs.append({"role": "user", "content": user})
+    return msgs
+
+
+def coach_stream(question: str, history: list | None = None):
+    """Yields events: {"stage":"library"} → {"sources":[..],"grounded":bool} → {"delta":"text"}… → {"done":True,...}.
+    Research comes from the RAG library; the answer is written token-by-token by the local model."""
+    t0 = time.time()
+    q = question.strip()
+    yield {"stage": "library"}
+    rag = _rag_lookup(q)
+    notes = (rag.get("answer") or "").strip()
+    srcs = rag.get("sources") or []
+    yield {"sources": srcs, "grounded": bool(notes), "library_secs": round(time.time() - t0, 1)}
+    yield {"stage": "writing"}
+    got = False
     try:
-        r = requests.post(OLLAMA_URL() + "/api/chat", json={
-            "model": COACH_MODEL(), "messages": msgs, "stream": False, "think": False, "keep_alive": "60m",
-            "options": {"num_ctx": 8192, "temperature": 0.6}}, timeout=300)
-        r.raise_for_status()
-        ans = (r.json().get("message") or {}).get("content", "")
-        ans = re.sub(r"<think>.*?</think>", "", ans, flags=re.S).strip()
-        if not ans:
-            raise ValueError("empty answer from local model")
-        return {"answer": ans, "sources": srcs, "grounded": bool(notes), "model": COACH_MODEL(),
-                "seconds": round(time.time() - t0, 1)}
+        with requests.post(OLLAMA_URL() + "/api/chat", json={
+                "model": COACH_MODEL(), "messages": _coach_messages(q, history, notes, srcs), "stream": True,
+                "think": False, "keep_alive": "8h", "options": {"num_ctx": 8192, "temperature": 0.6}},
+                stream=True, timeout=(10, 300)) as r:
+            r.raise_for_status()
+            in_think = False
+            for line in r.iter_lines():
+                if not line:
+                    continue
+                d = json.loads(line)
+                tok = (d.get("message") or {}).get("content", "")
+                if "<think>" in tok:
+                    in_think = True
+                if in_think:
+                    if "</think>" in tok:
+                        in_think = False
+                    continue
+                if tok:
+                    got = True
+                    yield {"delta": tok}
+                if d.get("done"):
+                    break
+        yield {"done": True, "model": COACH_MODEL(), "seconds": round(time.time() - t0, 1)}
     except Exception as e:
         log.warning("local coach model failed: %s", e)
-        if notes:  # local model down: still give the library's answer
-            return {**rag, "model": "library", "seconds": round(time.time() - t0, 1)}
-        return {"error": f"Local model unavailable ({e}) and the library did not answer."}
+        if not got and notes:  # local model down: give the library's own answer
+            yield {"delta": notes}
+            yield {"done": True, "model": "library", "seconds": round(time.time() - t0, 1)}
+        elif not got:
+            yield {"error": f"Local model unavailable ({e}) and the library did not answer."}
+        else:
+            yield {"done": True, "model": COACH_MODEL(), "seconds": round(time.time() - t0, 1), "cut_short": True}
+
+
+def coach_ask(question: str, history: list | None = None) -> dict:
+    """Non-streaming wrapper (used by tests and anything that wants the whole answer at once)."""
+    out = {"answer": "", "sources": [], "grounded": False}
+    for ev in coach_stream(question, history):
+        if "delta" in ev:
+            out["answer"] += ev["delta"]
+        elif "sources" in ev:
+            out.update(sources=ev["sources"], grounded=ev["grounded"])
+        elif "error" in ev:
+            return {"error": ev["error"]}
+        elif ev.get("done"):
+            out.update(model=ev.get("model"), seconds=ev.get("seconds"))
+    out["answer"] = out["answer"].strip()
+    return out
 
 
 def coach_warm():
     """Load the coach model into the GPU so the first answer is quick."""
     try:
-        requests.post(OLLAMA_URL() + "/api/generate", json={"model": COACH_MODEL(), "prompt": "", "keep_alive": "60m"}, timeout=180)
+        requests.post(OLLAMA_URL() + "/api/generate", json={"model": COACH_MODEL(), "prompt": "", "keep_alive": "8h", "options": {"num_ctx": 8192}}, timeout=180)
     except Exception as e:
         log.warning("coach warm: %s", e)
 
