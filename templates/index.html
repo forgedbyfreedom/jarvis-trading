@@ -930,21 +930,23 @@ function speechText(a){ // what to say out loud: no citations/markdown, first fe
 }
 async function voicesReady(){if(speechSynthesis.getVoices().length)return;
  await new Promise(r=>{const done=()=>{speechSynthesis.removeEventListener('voiceschanged',done);r();};speechSynthesis.addEventListener('voiceschanged',done);setTimeout(r,3000);});}
+async function playAudio(blob){const url=URL.createObjectURL(blob);
+ await new Promise(res=>{curAudio=new Audio(url);curAudio.onended=res;curAudio.onerror=res;curAudio.play().catch(res);});URL.revokeObjectURL(url);}
 async function speak(answer){
- const text=speechText(answer);if(!text)return;speaking=true;await voicesReady();talkSay('🔊 Athena is speaking… (tap Stop to interrupt)');
+ const text=speechText(answer);if(!text)return;speaking=true;talkSay('🔊 Athena is speaking… (tap Stop to interrupt)');
  try{
-  if(ttsMode==='fbf'){
-   const r=await fetch(API+'/api/tts',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({text})});
-   if(r.ok){const url=URL.createObjectURL(await r.blob());await new Promise(res=>{curAudio=new Audio(url);curAudio.onended=res;curAudio.onerror=res;curAudio.play().catch(res);});speaking=false;return;}
-   ttsMode='browser';
-  }
-  await new Promise(res=>{const u=new SpeechSynthesisUtterance(text);u.rate=1.0;u.pitch=1.0;
+  // Athena's real voice: British female neural voice generated on the PC
+  try{const r=await fetch(API+'/api/say',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({text})});
+   if(r.ok){await playAudio(await r.blob());return;}}catch(e){}
+  // offline fallback only: a browser voice, never the male default if a female one exists
+  await voicesReady();
+  await new Promise(res=>{const u=new SpeechSynthesisUtterance(text);
    const v=britishVoice();if(v){u.voice=v;u.lang=v.lang;}else u.lang='en-GB';
    u.onend=res;u.onerror=res;speechSynthesis.speak(u);});
  }finally{speaking=false;curAudio=null;}
 }
 // Best British female voice available: Edge neural voices first, then Chrome's, then any en-GB female.
-const UK_FEMALE=[/Sonia.*Natural/i,/Libby.*Natural/i,/Maisie.*Natural/i,/Abbi|Bella|Hollie|Olivia.*Natural/i,/Google UK English Female/i,/Microsoft Hazel/i,/Microsoft Susan/i,/Serena|Kate|Stephanie|Martha/i];
+const UK_FEMALE=[/Sonia.*Natural/i,/Libby.*Natural/i,/Maisie.*Natural/i,/Abbi|Bella|Hollie|Olivia.*Natural/i,/Google UK English Female/i,/Microsoft Hazel/i,/Microsoft Susan/i,/Serena|Kate|Stephanie|Martha/i,/Microsoft Zira/i,/Aria.*Natural|Jenny.*Natural/i];
 function britishVoice(){const vs=speechSynthesis.getVoices();
  for(const re of UK_FEMALE){const v=vs.find(v=>re.test(v.name));if(v)return v;}
  return vs.find(v=>/en-GB/i.test(v.lang)&&!/\bMale\b|George|Ryan|Thomas|Daniel|Arthur|Oliver|Alfie|Elliot|Ethan|Noah/i.test(v.name))||vs.find(v=>/en-GB/i.test(v.lang))||null;}

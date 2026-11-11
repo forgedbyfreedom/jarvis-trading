@@ -580,6 +580,24 @@ async def speech_to_text(request: Request):
     return await asyncio.get_event_loop().run_in_executor(None, stt.transcribe, audio, suffix)
 
 
+@app.post("/api/say")
+async def athena_say(request: Request):
+    """Athena's voice: Microsoft Sonia neural (British female) via edge-tts, returned as MP3."""
+    import edge_tts, hashlib
+    body = await request.json()
+    text = (body.get("text") or "").strip()[:1500]
+    if not text:
+        raise HTTPException(400, "no text")
+    voice = os.environ.get("ATHENA_VOICE", "en-GB-SoniaNeural")
+    cache = os.path.join(os.path.dirname(os.path.abspath(__file__)), "data", "tts_cache")
+    os.makedirs(cache, exist_ok=True)
+    path = os.path.join(cache, hashlib.sha1((voice + text).encode()).hexdigest() + ".mp3")
+    if not os.path.exists(path):
+        await edge_tts.Communicate(text, voice, rate="+4%").save(path)
+    with open(path, "rb") as f:
+        return Response(content=f.read(), media_type="audio/mpeg")
+
+
 @app.post("/api/stt/warm")
 def stt_warm():
     stt.warm()
