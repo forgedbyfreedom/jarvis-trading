@@ -248,7 +248,9 @@ def _keep_warm_loop():
                     soon = left < 1800
                 except Exception:
                     soon = True
-            if not mine or soon:
+            others = [m for m in ps if m not in mine]
+            # Another job (e.g. the FBF Council morning run) has the GPU: don't fight it — wait until it's done.
+            if not others and (not mine or soon):
                 coach_warm()
         except Exception as e:
             log.debug("keep-warm: %s", e)
