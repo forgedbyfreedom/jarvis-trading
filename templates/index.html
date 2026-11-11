@@ -243,6 +243,7 @@ a{color:var(--cyan);text-decoration:none}
  <div class="dock-sec" style="--acc:212,169,58">
   <h4>Forged by Freedom</h4>
   <div class="tiles">
+   <div class="tile hot" data-t="clients"><span class="ic">🏋️</span><span class="tt">FBF Clients</span><span class="st" data-s="clients">Live adherence &amp; progress</span></div>
    <div class="tile hot" data-t="coach"><span class="ic">🧠</span><span class="tt">AI Coach</span><span class="st" data-s="coach">Private · ask anything</span></div>
    <div class="tile" data-t="peptides"><span class="ic">🧬</span><span class="tt">Peptide Research</span><span class="st" data-s="peptides">Daily PubMed feed</span></div>
    <div class="tile" data-t="sports"><span class="ic">🏈</span><span class="tt">Sports Board</span><span class="st">NFL · NCAAF picks</span></div>
@@ -406,6 +407,24 @@ a{color:var(--cyan);text-decoration:none}
 </div></div>
 </div>
 
+<div id="p-clients" style="display:none">
+<div class="panel full"><div class="phead"><h3>FBF Clients</h3><div style="display:flex;gap:8px;align-items:center"><span id="fcStatus" style="color:var(--dim);font-size:12px"></span><button class="btn btn-ghost" onclick="fcRefresh()">↻ Refresh now</button></div></div>
+<div class="pbody">
+ <div id="fcConnect" class="iv-card" style="display:none;max-width:520px">
+  <h4>Connect the FBF app to Athena</h4>
+  <p class="d">Sign in once with your FBF coach login. Athena keeps only the app session (never your password) and reads your clients' logs, check-ins and bloodwork every 30 minutes. Read-only.</p>
+  <div class="iv-row"><input id="fcEmail" type="email" placeholder="coach email" autocomplete="username"></div>
+  <div class="iv-row"><input id="fcPass" type="password" placeholder="password" autocomplete="current-password"><button class="btn btn-go" onclick="fcConnect()">Connect</button></div>
+  <div class="iv-out" id="fcConnOut"></div></div>
+ <div id="fcMain" style="display:none">
+  <div class="iv-card" style="margin-bottom:14px"><h4>Alerts</h4><div id="fcAlerts"></div></div>
+  <div class="iv-card"><h4>Roster · last 14 days</h4><div id="fcTable"></div></div>
+  <div class="iv-card" id="fcDetail" style="margin-top:14px;display:none"></div>
+  <p style="color:var(--dim);font-size:.75rem;margin-top:10px">Ask Athena about any client by name — e.g. "How's Jim doing this week?" or "Who's slipping on adherence?" · <a href="#" onclick="fcDisconnect();return false" style="color:var(--dim)">disconnect</a></p>
+ </div>
+</div></div>
+</div>
+
 <div id="p-verify" style="display:none">
 <div class="panel full"><div class="phead"><h3>Supplier &amp; Contact Check</h3><span style="color:var(--dim);font-size:12px">Verify businesses and contacts — catch impersonators and counterfeit batches</span></div>
 <div class="pbody"><div class="iv-grid">
@@ -460,9 +479,9 @@ FBFNeural.mount(document.getElementById('heroCanvas'),{brainUrl:'/static/brain.b
 /* ═══ DASHBOARD ENGINE ═══ */
 const API='';
 setInterval(()=>{document.getElementById('clk').textContent=new Date().toLocaleTimeString();},1000);
-const tabs=['dashboard','stocks','crypto','dryrun','autotrade','advisory','signals','portfolio','backtest','audit','coach','peptides','sports','godseye','verify','trends'];
+const tabs=['dashboard','stocks','crypto','dryrun','autotrade','advisory','signals','portfolio','backtest','audit','coach','peptides','sports','godseye','verify','trends','clients'];
 const loaders={dashboard:()=>loadDash(),stocks:()=>loadMarket('stock'),crypto:()=>loadMarket('crypto'),dryrun:()=>loadDry(),autotrade:()=>loadAT(),
- advisory:()=>loadAdvisory(),signals:()=>loadScan(),portfolio:()=>loadPF(),audit:()=>loadAudit(),coach:()=>openCoach(),peptides:()=>loadPeptides(false),sports:()=>openSports(),godseye:()=>openGodsEye(),verify:()=>rgLoad(),trends:()=>loadTrends(false)};
+ advisory:()=>loadAdvisory(),signals:()=>loadScan(),portfolio:()=>loadPF(),audit:()=>loadAudit(),coach:()=>openCoach(),peptides:()=>loadPeptides(false),sports:()=>openSports(),godseye:()=>openGodsEye(),verify:()=>rgLoad(),trends:()=>loadTrends(false),clients:()=>fcLoad()};
 function showTab(t){
  document.querySelectorAll('.tile[data-t]').forEach(x=>x.classList.toggle('on',x.dataset.t===t));
  tabs.forEach(id=>{const el=document.getElementById('p-'+id);if(el)el.style.display=id===t?'block':'none';});
@@ -842,7 +861,7 @@ async function coachSend(voice){
  coachHist.push({role:'user',text});q.value='';go.disabled=true;
  const msg={role:'ai',text:'Thinking…'};coachHist.push(msg);renderCoach();
  FBFNeural.thinking(true);const cs=document.getElementById('coachStatus');cs.textContent='Searching the research library';cs.classList.add('on');
- if(voice){sayQueue.push(ACKS[Math.floor(Math.random()*ACKS.length)]);talkSay('📚 Athena is checking your library…');}
+ 
  let full='',buf='',lastPaint=0;
  const feed=(final)=>{ // hand finished sentences to the voice as they arrive
   if(!voice)return;
@@ -857,7 +876,9 @@ async function coachSend(voice){
   const rd=r.body.getReader(),dec=new TextDecoder();let pend='';
   for(;;){const {value,done}=await rd.read();if(done)break;pend+=dec.decode(value,{stream:true});
    let i;while((i=pend.indexOf('\n'))>=0){const line=pend.slice(0,i);pend=pend.slice(i+1);if(!line.trim())continue;const ev=JSON.parse(line);
-    if(ev.sources){msg.sources=ev.sources.slice(0,5);msg.grounded=ev.grounded;cs.textContent='Athena is writing';if(voice)talkSay('🔊 Athena is answering… (tap Stop to interrupt)');}
+    if(ev.stage==='clients'||ev.stage==='library'){const cl=ev.stage==='clients';cs.textContent=cl?'Reading your FBF app data':'Searching the research library';
+     if(voice){if(!cl)sayQueue.push(ACKS[Math.floor(Math.random()*ACKS.length)]);talkSay(cl?'📊 Athena is reading your client data…':'📚 Athena is checking your library…');}}
+    else if(ev.sources){msg.sources=ev.sources.slice(0,5);msg.grounded=ev.grounded;cs.textContent='Athena is writing';if(voice)talkSay('🔊 Athena is answering… (tap Stop to interrupt)');}
     else if(ev.delta){full+=ev.delta;buf+=ev.delta;msg.text=full;feed(false);
      if(Date.now()-lastPaint>150){renderCoach();lastPaint=Date.now();}}
     else if(ev.error)throw new Error(ev.error);}}
@@ -1014,6 +1035,44 @@ async function openGodsEye(){const st=document.getElementById('gevStatus'),tile=
  catch(e){st.textContent='Could not start the globe server';}}
 function gevOpen(){if(gevWin&&!gevWin.closed){gevWin.focus();return;}gevWin=window.open(gevUrl,'godseye','width=1600,height=950');}
 
+
+
+/* ── FBF Clients: live adherence & progress from the FBF app ── */
+const pc=v=>v==null?'<span style="color:var(--dim)">—</span>':`<span class="${v>=90?'v-ok':v>=75?'v-warn':'v-bad'}" style="padding:1px 6px;border-radius:5px">${v}%</span>`;
+const sevC={high:'v-bad',medium:'v-warn',low:'v-unk',info:'v-unk'};
+async function fcLoad(){
+ const d=await (await fetch(API+'/api/fbf/clients')).json(),s=d.status;
+ const tile=document.querySelector('[data-s="clients"]');
+ document.getElementById('fcConnect').style.display=s.connected?'none':'block';
+ document.getElementById('fcMain').style.display=s.connected?'block':'none';
+ document.getElementById('fcStatus').textContent=s.connected?`${s.clients} clients · updated ${s.updated_at?new Date(s.updated_at).toLocaleTimeString():'—'}${s.error?' · ⚠ '+s.error:''}`:'Not connected';
+ if(tile)tile.textContent=s.connected?`${s.clients} clients · ${d.alerts.filter(a=>a.severity==='high'||a.severity==='medium').length} alerts`:'Connect the FBF app';
+ if(!s.connected)return;
+ document.getElementById('fcAlerts').innerHTML=d.alerts.length?d.alerts.map(a=>`<div style="margin:4px 0"><span class="${sevC[a.severity]||'v-unk'}" style="padding:1px 6px;border-radius:5px;font-size:.7rem;text-transform:uppercase">${a.severity}</span> ${H(a.message)}</div>`).join(''):'<span style="color:var(--dim)">No alerts — everyone is on track.</span>';
+ document.getElementById('fcTable').innerHTML=`<table class="iv-reg"><tr><th>Client</th><th>Workouts</th><th>Meals</th><th>Water</th><th>Supps</th><th>Check-in</th><th>Weight</th><th>lbs/wk</th><th>Alerts</th></tr>${d.clients.map(c=>`<tr style="cursor:pointer" onclick="fcDetail(${c.id})"><td>${H(c.name)}</td><td>${H(c.workouts)}</td><td>${pc(c.meal_pct)}</td><td>${pc(c.water_pct)}</td><td>${pc(c.supp_pct)}</td><td>${H(c.checkin)}${c.last_checkin_at?' · '+c.last_checkin_at.slice(5,10):''}</td><td>${c.weight??'—'}</td><td>${c.weight_wk==null?'—':(c.weight_wk>0?'+':'')+c.weight_wk}</td><td>${c.alerts||''}</td></tr>`).join('')}</table>`;
+}
+async function fcDetail(id){
+ const c=await (await fetch(API+'/api/fbf/clients/'+id)).json(),a=c.adherence,p=c.progress,el=document.getElementById('fcDetail');
+ el.style.display='block';
+ el.innerHTML=`<h4>${H(c.name)}</h4>
+  <p class="d">Coach: ${H(c.coach||'—')} · logged ${a.days_logged}/14 days · ${a.workouts_completed} workouts done, ${a.workouts_missed} missed (worst run ${a.missed_in_a_row_max})</p>
+  <div>Meals ${pc(a.meal_adherence_pct)} · off-plan meals ${a.off_plan_meals} · Water ${pc(a.water_compliance_pct)} · Supplements ${pc(a.supplement_adherence_pct)} · Check-in: <b>${H(a.last_checkin_status)}</b></div>
+  <div style="margin-top:6px">Weight ${p.weight_latest?p.weight_latest.value+' lbs':'—'} · ${p.weight_change_per_week?(p.weight_change_per_week.value>0?'+':'')+p.weight_change_per_week.value+' lbs/wk':''} · 30 d ${p.weight_change_30d?p.weight_change_30d.value+' lbs':'—'} · sleep ${p.sleep_avg_hours??'—'} h · photos (30 d) ${p.photo_submissions_30d}</div>
+  ${p.scores_avg_4wk?`<div style="margin-top:6px;color:var(--dim)">Check-in scores (4 wk avg): ${Object.entries(p.scores_avg_4wk).map(([k,v])=>k+' '+v).join(' · ')}</div>`:''}
+  ${p.latest_bloodwork&&p.latest_bloodwork.flagged.length?`<div style="margin-top:6px">Bloodwork flags: ${H(p.latest_bloodwork.flagged.join(', '))}</div>`:''}
+  ${a.off_plan_days.length?`<div style="margin-top:6px;color:var(--dim)">Off-plan days: ${a.off_plan_days.map(o=>o.day.slice(5)+' ('+H(o.shortfalls.join(', '))+')').join(' · ')}</div>`:''}
+  ${c.latest_checkin&&c.latest_checkin.fields?`<div style="margin-top:6px;color:var(--dim)">Latest check-in ${c.latest_checkin.at.slice(0,10)}: ${H(Object.entries(c.latest_checkin.fields).filter(([k])=>!['scores'].includes(k)).map(([k,v])=>k.replace('_',' ')+': '+v).join(' · '))}</div>`:''}
+  <div style="margin-top:8px"><button class="btn btn-go" onclick="showTab('coach');document.getElementById('coachQ').value='How is ${H(c.name).replace(/'/g,'')} doing? Give me a coaching read and what I should change.';coachSend()">Ask Athena about ${H(c.name.split(' ')[0])}</button></div>`;
+ el.scrollIntoView({behavior:'smooth',block:'nearest'});
+}
+async function fcConnect(){const o=document.getElementById('fcConnOut');o.textContent='Signing in…';
+ try{const r=await fetch(API+'/api/fbf/connect',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email:val('fcEmail'),password:document.getElementById('fcPass').value})});
+  const d=await r.json();if(!r.ok)throw new Error(d.detail||'Sign-in failed');
+  document.getElementById('fcPass').value='';o.textContent='Connected — pulling your clients…';setTimeout(fcLoad,4000);setTimeout(fcLoad,15000);}
+ catch(e){o.textContent='⚠ '+e.message;}}
+async function fcRefresh(){document.getElementById('fcStatus').textContent='Refreshing…';await fetch(API+'/api/fbf/refresh',{method:'POST'});fcLoad();}
+async function fcDisconnect(){if(!confirm('Disconnect the FBF app from Athena?'))return;await fetch(API+'/api/fbf/disconnect',{method:'POST'});fcLoad();}
+setInterval(()=>{if(document.getElementById('p-clients').style.display!=='none')fcLoad();},5*60*1000);
 
 /* ── Intel: contact verifier, supplier check, batch check, trends ── */
 const H=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));

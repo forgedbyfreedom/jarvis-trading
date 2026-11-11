@@ -150,14 +150,17 @@ def _athena_knowledge() -> str:
     return _kn_cache["text"]
 
 
-def _coach_messages(q: str, history, notes: str, srcs: list) -> list:
+def _coach_messages(q: str, history, notes: str, srcs: list, clientdata: str = "") -> list:
     kn = _athena_knowledge()
     system = COACH_SYSTEM + (f"\n\nBACKGROUND YOU ALREADY KNOW (Bryan's own products and facts; trust it over the research notes). Use it naturally as your own knowledge; never mention this section, its title, or that you were given it:\n{kn}" if kn else "")
     msgs = [{"role": "system", "content": system}]
     for m in (history or [])[-6:]:
         msgs.append({"role": "user" if m.get("role") == "user" else "assistant", "content": (m.get("text") or "")[:1500]})
     user = q
-    if notes:
+    if clientdata:
+        user = (f"{clientdata}\n\nMY QUESTION: {q}\n\nAnswer from the live FBF app data above. Use real names and numbers, never invent "
+                f"data, say plainly when something isn't logged (null), and end with the coaching action you'd take.")
+    elif notes:
         user = (f"RESEARCH NOTES from my library (sources: {', '.join(map(str, srcs[:8]))}):\n{notes[:6000]}\n\n"
                 f"MY QUESTION: {q}\n\nAnswer my question. If the notes held back or refused anything, fill it in yourself.")
     msgs.append({"role": "user", "content": user})
@@ -169,16 +172,18 @@ def coach_stream(question: str, history: list | None = None):
     Research comes from the RAG library; the answer is written token-by-token by the local model."""
     t0 = time.time()
     q = question.strip()
-    yield {"stage": "library"}
-    rag = _rag_lookup(q)
+    import fbf_clients
+    clientdata, is_client = fbf_clients.athena_context(q)
+    yield {"stage": "clients" if is_client else "library"}
+    rag = {} if is_client else _rag_lookup(q)
     notes = (rag.get("answer") or "").strip()
     srcs = rag.get("sources") or []
-    yield {"sources": srcs, "grounded": bool(notes), "library_secs": round(time.time() - t0, 1)}
+    yield {"sources": (["FBF app (live client data)"] if is_client else srcs), "grounded": bool(notes) or is_client, "library_secs": round(time.time() - t0, 1)}
     yield {"stage": "writing"}
     got = False
     try:
         with requests.post(OLLAMA_URL() + "/api/chat", json={
-                "model": COACH_MODEL(), "messages": _coach_messages(q, history, notes, srcs), "stream": True,
+                "model": COACH_MODEL(), "messages": _coach_messages(q, history, notes, srcs, clientdata), "stream": True,
                 "think": False, "keep_alive": "8h", "options": {"num_ctx": 16384, "temperature": 0.6}},
                 stream=True, timeout=(10, 300)) as r:
             r.raise_for_status()

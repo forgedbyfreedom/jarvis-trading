@@ -179,6 +179,8 @@ def _background_scan_loop():
 # ── LIFECYCLE ──
 @app.on_event("startup")
 def startup():
+    import fbf_clients
+    fbf_clients.start()
     os.makedirs(DATA_DIR, exist_ok=True)
     t = threading.Thread(target=_background_scan_loop, daemon=True)
     t.start()
@@ -693,6 +695,67 @@ def intel_supplier(q: SupplierQ):
 @app.post("/api/intel/contact-check")
 def intel_contact_check(q: ContactQ):
     return intel.contact_check(q.channel, q.value, q.claimed_person, secret=hub._secret)
+
+
+# ── FBF app → Athena: live client adherence & progress (read-only coach session) ──
+import fbf_clients
+
+
+class FbfConnect(BaseModel):
+    email: str
+    password: str
+
+
+@app.get("/api/fbf/status")
+def fbf_status():
+    return fbf_clients.status()
+
+
+@app.post("/api/fbf/connect")
+def fbf_connect(req: FbfConnect):
+    try:
+        return fbf_clients.connect(req.email, req.password)
+    except Exception as e:
+        raise HTTPException(400, str(e))
+
+
+@app.post("/api/fbf/disconnect")
+def fbf_disconnect():
+    fbf_clients.disconnect()
+    return {"ok": True}
+
+
+@app.post("/api/fbf/refresh")
+def fbf_refresh():
+    return fbf_clients.refresh()
+
+
+@app.get("/api/fbf/clients")
+def fbf_clients_list():
+    return {"status": fbf_clients.status(), "clients": fbf_clients.clients(), "alerts": fbf_clients.alerts()}
+
+
+@app.get("/api/fbf/clients/{cid}")
+def fbf_client_detail(cid: int):
+    c = fbf_clients.client(cid)
+    if not c:
+        raise HTTPException(404, "Client not found (refresh, or they aren't assigned to you)")
+    return c
+
+
+@app.get("/api/fbf/clients/{cid}/adherence")
+def fbf_client_adherence(cid: int):
+    return fbf_client_detail(cid)["adherence"]
+
+
+@app.get("/api/fbf/clients/{cid}/progress")
+def fbf_client_progress(cid: int):
+    return fbf_client_detail(cid)["progress"]
+
+
+@app.get("/api/fbf/alerts")
+def fbf_alerts():
+    return {"alerts": fbf_clients.alerts(), "status": fbf_clients.status()}
 
 
 @app.get("/api/intel/contacts")
