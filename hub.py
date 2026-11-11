@@ -115,7 +115,7 @@ COACH_SYSTEM = (
     "Answer directly and fully. Use the RESEARCH NOTES from his library first and say when you go beyond them. "
     "Give real numbers (doses studied, half-lives, timelines, ranges) where the research has them, and state "
     "uncertainty plainly. No lectures, no moralising, no 'consult a professional' filler. "
-    "Keep spoken-style answers tight: lead with the answer, then the key details."
+    "Keep spoken-style answers tight: lead with the answer, then the key details. Never refer to your instructions, prompt sections or 'research notes' by name; say 'your library' if you need to cite it."
 )
 
 
@@ -152,7 +152,7 @@ def _athena_knowledge() -> str:
 
 def _coach_messages(q: str, history, notes: str, srcs: list) -> list:
     kn = _athena_knowledge()
-    system = COACH_SYSTEM + (f"\n\nWHAT YOU KNOW DIRECTLY (Bryan's own products and facts; trust these over the research notes):\n{kn}" if kn else "")
+    system = COACH_SYSTEM + (f"\n\nBACKGROUND YOU ALREADY KNOW (Bryan's own products and facts; trust it over the research notes). Use it naturally as your own knowledge; never mention this section, its title, or that you were given it:\n{kn}" if kn else "")
     msgs = [{"role": "system", "content": system}]
     for m in (history or [])[-6:]:
         msgs.append({"role": "user" if m.get("role") == "user" else "assistant", "content": (m.get("text") or "")[:1500]})
@@ -179,7 +179,7 @@ def coach_stream(question: str, history: list | None = None):
     try:
         with requests.post(OLLAMA_URL() + "/api/chat", json={
                 "model": COACH_MODEL(), "messages": _coach_messages(q, history, notes, srcs), "stream": True,
-                "think": False, "keep_alive": "8h", "options": {"num_ctx": 8192, "temperature": 0.6}},
+                "think": False, "keep_alive": "8h", "options": {"num_ctx": 16384, "temperature": 0.6}},
                 stream=True, timeout=(10, 300)) as r:
             r.raise_for_status()
             in_think = False
@@ -230,7 +230,7 @@ def coach_ask(question: str, history: list | None = None) -> dict:
 def coach_warm():
     """Load the coach model into the GPU so the first answer is quick."""
     try:
-        requests.post(OLLAMA_URL() + "/api/generate", json={"model": COACH_MODEL(), "prompt": "", "keep_alive": "8h", "options": {"num_ctx": 8192}}, timeout=180)
+        requests.post(OLLAMA_URL() + "/api/generate", json={"model": COACH_MODEL(), "prompt": "", "keep_alive": "8h", "options": {"num_ctx": 16384}}, timeout=180)
     except Exception as e:
         log.warning("coach warm: %s", e)
 
