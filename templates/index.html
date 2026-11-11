@@ -851,43 +851,73 @@ function coachClear(){coachHist=[];renderCoach();}
 document.getElementById('coachQ').addEventListener('keydown',e=>{if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();coachSend();}});
 
 
-/* ── HANDS-FREE TALK: listen → send on pause → answer → speak (FBF voice) → listen again ── */
-const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
-let talkOn=false,rec=null,silenceT=null,speaking=false,busy=false,ttsMode='browser',curAudio=null;
+/* ── HANDS-FREE TALK with ATHENA: mic → local Whisper (RTX 3090) → coach → British voice → listen again ── */
+let talkOn=false,speaking=false,busy=false,ttsMode='browser',curAudio=null;
+let micStream=null,audioCtx=null,analyser=null,mediaRec=null,chunks=[],vadTimer=null,pendingText='';
 const ATHENA_HELLO=['Hi Bryan, it\'s Athena. What can I help with?','Athena here. What\'s on your mind?','Hey Bryan. Ready when you are.'];
-const PAUSE_MS=2200, PAUSE_MID_MS=3800;   // silence before sending; longer if the sentence sounds unfinished
-const TRAILING=/\b(and|but|so|or|um+|uh+|er+|like|because|cause|the|a|an|to|of|with|for|if|then|which|that|my|i|is|was|about|maybe|also)$/i;
+const PAUSE_MS=2300;            // silence after you stop talking before Athena answers
+const MIN_SPEECH_MS=350;        // ignore coughs / clicks shorter than this
+const TRAILING=/\b(and|but|so|or|um+|uh+|er+|like|because|cause|the|a|an|to|of|with|for|if|then|which|that|my|i|is|was|about|maybe|also)[.,!?]*$/i;
 function talkSay(s){document.getElementById('talkState').textContent=s;}
 async function talkToggle(){
- if(!SR){toast('Voice input needs Chrome or Edge','err');return;}
  talkOn=!talkOn;document.getElementById('talkBtn').classList.toggle('on',talkOn);
  document.getElementById('talkBtn').textContent=talkOn?'■ Stop':'🎙 Talk to Athena';
- if(!talkOn){stopListening();stopSpeaking();talkSay('');return;}
- ttsMode='browser';
+ if(!talkOn){stopListening(true);stopSpeaking();talkSay('');return;}
+ try{micStream=await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:true,noiseSuppression:true,autoGainControl:true}});}
+ catch(e){toast('Microphone blocked — click the lock/site icon in the address bar and allow the microphone','err');talkOn=false;
+  document.getElementById('talkBtn').classList.remove('on');document.getElementById('talkBtn').textContent='🎙 Talk to Athena';return;}
+ fetch(API+'/api/stt/warm',{method:'POST'});
  talkSay('Athena is waking up…');await speak(ATHENA_HELLO[Math.floor(Math.random()*ATHENA_HELLO.length)]);
- if(talkOn)startListening();}
-function startListening(){
- if(!talkOn||speaking||busy)return;
- rec=new SR();rec.lang='en-US';rec.continuous=true;rec.interimResults=true;
- const q=document.getElementById('coachQ');let finalText='';
- rec.onresult=e=>{let interim='';
-  for(let i=e.resultIndex;i<e.results.length;i++){const r=e.results[i];if(r.isFinal)finalText+=r[0].transcript+' ';else interim+=r[0].transcript;}
-  q.value=(finalText+interim).trim();talkSay('🎙 Athena is listening… '+(q.value?'(pause when you\'re done)':''));
-  clearTimeout(silenceT);
-  if(q.value){const wait=(interim||TRAILING.test(q.value.replace(/[.,!?]+$/,'').trim()))?PAUSE_MID_MS:PAUSE_MS;silenceT=setTimeout(()=>sendSpoken(),wait);}};
- rec.onerror=e=>{if(e.error==='not-allowed'){toast('Microphone blocked — allow it in the address bar','err');talkToggle();}};
- rec.onend=()=>{if(talkOn&&!speaking&&!busy)setTimeout(startListening,250);};
- try{rec.start();talkSay('🎙 Athena is listening…');}catch(e){}
+ if(talkOn)startListening();
 }
-function stopListening(){clearTimeout(silenceT);if(rec){rec.onend=null;try{rec.stop();}catch(e){}rec=null;}}
+function startListening(){
+ if(!talkOn||speaking||busy||!micStream)return;
+ if(!audioCtx){audioCtx=new (window.AudioContext||window.webkitAudioContext)();const src=audioCtx.createMediaStreamSource(micStream);
+  analyser=audioCtx.createAnalyser();analyser.fftSize=1024;src.connect(analyser);}
+ if(audioCtx.state==='suspended')audioCtx.resume();
+ const mime=['audio/webm;codecs=opus','audio/webm','audio/ogg;codecs=opus','audio/mp4'].find(m=>window.MediaRecorder&&MediaRecorder.isTypeSupported(m))||'';
+ chunks=[];mediaRec=new MediaRecorder(micStream,mime?{mimeType:mime}:{});
+ mediaRec.ondataavailable=e=>{if(e.data.size)chunks.push(e.data);};
+ mediaRec.start(250);
+ const buf=new Float32Array(analyser.fftSize);let floor=0.01,speechMs=0,silenceMs=0,heard=false,started=Date.now();
+ talkSay(pendingText?'🎙 Athena is listening… (go on)':'🎙 Athena is listening…');
+ clearInterval(vadTimer);
+ vadTimer=setInterval(()=>{
+  analyser.getFloatTimeDomainData(buf);let sum=0;for(const v of buf)sum+=v*v;const rms=Math.sqrt(sum/buf.length);
+  const loud=rms>Math.max(0.018,floor*3.2);
+  if(!loud)floor=floor*0.97+rms*0.03;                                  // adapt to room noise
+  if(loud){speechMs+=50;silenceMs=0;if(speechMs>=MIN_SPEECH_MS&&!heard){heard=true;talkSay('🎙 Athena is listening… (pause when you\'re done)');}}
+  else if(heard)silenceMs+=50;
+  if(heard&&silenceMs>=PAUSE_MS){finishUtterance();}
+  else if(!heard&&Date.now()-started>25000){restartListening();}       // nothing said: start a fresh clip
+ },50);
+}
+function restartListening(){stopListening(false);startListening();}
+function stopListening(release){clearInterval(vadTimer);vadTimer=null;
+ if(mediaRec&&mediaRec.state!=='inactive'){mediaRec.ondataavailable=null;try{mediaRec.stop();}catch(e){}}mediaRec=null;
+ if(release){pendingText='';if(micStream){micStream.getTracks().forEach(t=>t.stop());micStream=null;}if(audioCtx){audioCtx.close();audioCtx=null;analyser=null;}}}
+async function finishUtterance(){
+ clearInterval(vadTimer);vadTimer=null;const rec=mediaRec;mediaRec=null;
+ const blob=await new Promise(res=>{rec.onstop=()=>res(new Blob(chunks,{type:rec.mimeType||'audio/webm'}));try{rec.stop();}catch(e){res(new Blob(chunks));}});
+ busy=true;talkSay('✍️ Athena is transcribing…');
+ let text='';
+ try{const r=await fetch(API+'/api/stt',{method:'POST',headers:{'Content-Type':blob.type||'audio/webm'},body:blob});text=((await r.json()).text||'').trim();}
+ catch(e){talkSay('⚠ Could not reach the transcriber — '+e.message);}
+ busy=false;
+ if(!text){if(talkOn)startListening();return;}
+ const full=(pendingText+' '+text).trim();
+ document.getElementById('coachQ').value=full;
+ if(TRAILING.test(text)){pendingText=full;if(talkOn)startListening();return;}   // sounded unfinished: keep listening
+ pendingText='';await sendSpoken();
+}
 async function sendSpoken(){
  const q=document.getElementById('coachQ');if(!q.value.trim()||busy)return;
- const said=q.value.trim().toLowerCase();
- if(/^(stop|stop talking|that's all|that is all|goodbye|bye|end conversation|thanks athena|thank you athena|bye athena|goodbye athena|goodnight athena)[.!]?$/.test(said)){q.value='';await speak('Anytime, Bryan.');talkToggle();return;}
- busy=true;stopListening();talkSay('🧠 Athena is thinking…');
+ const said=q.value.trim().toLowerCase().replace(/[.!?,]+$/,'');
+ if(/^(stop|stop talking|that's all|that is all|goodbye|bye|end conversation|thanks athena|thank you athena|bye athena|goodbye athena|goodnight athena|good night athena)$/.test(said)){q.value='';await speak('Anytime, Bryan.');talkToggle();return;}
+ busy=true;talkSay('🧠 Athena is thinking…');
  await coachSend();busy=false;
  if(talkOn&&lastAnswer)await speak(lastAnswer);
- if(talkOn){talkSay('🎙 Athena is listening…');startListening();}
+ if(talkOn)startListening();
 }
 function speechText(a){ // what to say out loud: no citations/markdown, first few sentences
  let t=a.replace(/\[@[^\]]*\]/g,'').replace(/\[[0-9,\s]+\]/g,'').replace(/[*_#>`|]/g,'')
@@ -896,8 +926,10 @@ function speechText(a){ // what to say out loud: no citations/markdown, first fe
  const s=t.match(/[^.!?]+[.!?]+|[^.!?]+$/g)||[t];let out='';for(const x of s){if((out+x).length>650)break;out+=x;}
  return out||t.slice(0,650);
 }
+async function voicesReady(){if(speechSynthesis.getVoices().length)return;
+ await new Promise(r=>{const done=()=>{speechSynthesis.removeEventListener('voiceschanged',done);r();};speechSynthesis.addEventListener('voiceschanged',done);setTimeout(r,3000);});}
 async function speak(answer){
- const text=speechText(answer);if(!text)return;speaking=true;talkSay('🔊 Athena is speaking… (tap Stop to interrupt)');
+ const text=speechText(answer);if(!text)return;speaking=true;await voicesReady();talkSay('🔊 Athena is speaking… (tap Stop to interrupt)');
  try{
   if(ttsMode==='fbf'){
    const r=await fetch(API+'/api/tts',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({text})});
@@ -914,7 +946,7 @@ const UK_FEMALE=[/Sonia.*Natural/i,/Libby.*Natural/i,/Maisie.*Natural/i,/Abbi|Be
 function britishVoice(){const vs=speechSynthesis.getVoices();
  for(const re of UK_FEMALE){const v=vs.find(v=>re.test(v.name));if(v)return v;}
  return vs.find(v=>/en-GB/i.test(v.lang)&&!/\bMale\b|George|Ryan|Thomas|Daniel|Arthur|Oliver|Alfie|Elliot|Ethan|Noah/i.test(v.name))||vs.find(v=>/en-GB/i.test(v.lang))||null;}
-if('speechSynthesis' in window)speechSynthesis.onvoiceschanged=()=>{const v=britishVoice();if(v)console.log('[talk] voice:',v.name);};
+if('speechSynthesis' in window){speechSynthesis.getVoices();speechSynthesis.addEventListener('voiceschanged',()=>{const v=britishVoice();if(v)console.log('[talk] voice:',v.name);});}
 function stopSpeaking(){try{speechSynthesis.cancel();}catch(e){}if(curAudio){curAudio.pause();curAudio=null;}speaking=false;}
 
 

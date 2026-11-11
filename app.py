@@ -565,6 +565,27 @@ class TTSBody(BaseModel):
     text: str
 
 
+import stt
+
+
+@app.post("/api/stt")
+async def speech_to_text(request: Request):
+    """Athena's ears: browser posts the recorded utterance, Whisper on the GPU returns the words."""
+    audio = await request.body()
+    if len(audio) < 2000:
+        return {"text": "", "secs": 0}
+    ctype = request.headers.get("content-type", "")
+    suffix = ".ogg" if "ogg" in ctype else ".mp4" if "mp4" in ctype else ".wav" if "wav" in ctype else ".webm"
+    import asyncio
+    return await asyncio.get_event_loop().run_in_executor(None, stt.transcribe, audio, suffix)
+
+
+@app.post("/api/stt/warm")
+def stt_warm():
+    stt.warm()
+    return {"ok": True}
+
+
 @app.get("/api/tts/status")
 def tts_status():
     return {"running": _tts_up(), "voice": TTS_VOICE}
