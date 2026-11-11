@@ -369,7 +369,7 @@ a{color:var(--cyan);text-decoration:none}
   <div class="coach-stage"><canvas id="coachCanvas" class="coach-bg"></canvas><div class="stage-status" id="coachStatus"></div></div>
   <div class="ask-shell" id="askShell">
    <textarea id="coachQ" rows="2" placeholder="Ask the FBF AI Coach: training, nutrition, peptides, bloodwork, protocols…"></textarea>
-   <button class="ask-go talk-btn" id="talkBtn" onclick="talkToggle()" title="Hands-free conversation">🎙 Talk</button>
+   <button class="ask-go talk-btn" id="talkBtn" onclick="talkToggle()" title="Hands-free conversation with Athena">🎙 Talk to Athena</button>
    <button class="ask-go" id="coachGo" onclick="coachSend()">Ask ➜</button>
   </div>
   <div class="talk-state" id="talkState"></div>
@@ -846,38 +846,40 @@ document.getElementById('coachQ').addEventListener('keydown',e=>{if(e.key==='Ent
 /* ── HANDS-FREE TALK: listen → send on pause → answer → speak (FBF voice) → listen again ── */
 const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
 let talkOn=false,rec=null,silenceT=null,speaking=false,busy=false,ttsMode='browser',curAudio=null;
+const ATHENA_HELLO=['Hi Bryan, it\'s Athena. What can I help with?','Athena here. What\'s on your mind?','Hey Bryan. Ready when you are.'];
 const PAUSE_MS=2200, PAUSE_MID_MS=3800;   // silence before sending; longer if the sentence sounds unfinished
 const TRAILING=/\b(and|but|so|or|um+|uh+|er+|like|because|cause|the|a|an|to|of|with|for|if|then|which|that|my|i|is|was|about|maybe|also)$/i;
 function talkSay(s){document.getElementById('talkState').textContent=s;}
 async function talkToggle(){
  if(!SR){toast('Voice input needs Chrome or Edge','err');return;}
  talkOn=!talkOn;document.getElementById('talkBtn').classList.toggle('on',talkOn);
- document.getElementById('talkBtn').textContent=talkOn?'■ Stop':'🎙 Talk';
+ document.getElementById('talkBtn').textContent=talkOn?'■ Stop':'🎙 Talk to Athena';
  if(!talkOn){stopListening();stopSpeaking();talkSay('');return;}
  ttsMode='browser';
- startListening();}
+ talkSay('Athena is waking up…');await speak(ATHENA_HELLO[Math.floor(Math.random()*ATHENA_HELLO.length)]);
+ if(talkOn)startListening();}
 function startListening(){
  if(!talkOn||speaking||busy)return;
  rec=new SR();rec.lang='en-US';rec.continuous=true;rec.interimResults=true;
  const q=document.getElementById('coachQ');let finalText='';
  rec.onresult=e=>{let interim='';
   for(let i=e.resultIndex;i<e.results.length;i++){const r=e.results[i];if(r.isFinal)finalText+=r[0].transcript+' ';else interim+=r[0].transcript;}
-  q.value=(finalText+interim).trim();talkSay('🎙 Listening… '+(q.value?'(pause to send)':''));
+  q.value=(finalText+interim).trim();talkSay('🎙 Athena is listening… '+(q.value?'(pause when you\'re done)':''));
   clearTimeout(silenceT);
   if(q.value){const wait=(interim||TRAILING.test(q.value.replace(/[.,!?]+$/,'').trim()))?PAUSE_MID_MS:PAUSE_MS;silenceT=setTimeout(()=>sendSpoken(),wait);}};
  rec.onerror=e=>{if(e.error==='not-allowed'){toast('Microphone blocked — allow it in the address bar','err');talkToggle();}};
  rec.onend=()=>{if(talkOn&&!speaking&&!busy)setTimeout(startListening,250);};
- try{rec.start();talkSay('🎙 Listening…');}catch(e){}
+ try{rec.start();talkSay('🎙 Athena is listening…');}catch(e){}
 }
 function stopListening(){clearTimeout(silenceT);if(rec){rec.onend=null;try{rec.stop();}catch(e){}rec=null;}}
 async function sendSpoken(){
  const q=document.getElementById('coachQ');if(!q.value.trim()||busy)return;
  const said=q.value.trim().toLowerCase();
- if(/^(stop|stop talking|that's all|goodbye|end conversation)\.?$/.test(said)){q.value='';talkToggle();return;}
- busy=true;stopListening();talkSay('🧠 Thinking…');
+ if(/^(stop|stop talking|that's all|that is all|goodbye|bye|end conversation|thanks athena|thank you athena|bye athena|goodbye athena|goodnight athena)[.!]?$/.test(said)){q.value='';await speak('Anytime, Bryan.');talkToggle();return;}
+ busy=true;stopListening();talkSay('🧠 Athena is thinking…');
  await coachSend();busy=false;
  if(talkOn&&lastAnswer)await speak(lastAnswer);
- if(talkOn){talkSay('🎙 Listening…');startListening();}
+ if(talkOn){talkSay('🎙 Athena is listening…');startListening();}
 }
 function speechText(a){ // what to say out loud: no citations/markdown, first few sentences
  let t=a.replace(/\[@[^\]]*\]/g,'').replace(/\[[0-9,\s]+\]/g,'').replace(/[*_#>`|]/g,'')
@@ -887,7 +889,7 @@ function speechText(a){ // what to say out loud: no citations/markdown, first fe
  return out||t.slice(0,650);
 }
 async function speak(answer){
- const text=speechText(answer);if(!text)return;speaking=true;talkSay('🔊 Speaking… (tap Stop to interrupt)');
+ const text=speechText(answer);if(!text)return;speaking=true;talkSay('🔊 Athena is speaking… (tap Stop to interrupt)');
  try{
   if(ttsMode==='fbf'){
    const r=await fetch(API+'/api/tts',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({text})});
