@@ -181,6 +181,7 @@ def _background_scan_loop():
 def startup():
     import fbf_clients
     fbf_clients.start()
+    hub.start_keep_warm()
     os.makedirs(DATA_DIR, exist_ok=True)
     t = threading.Thread(target=_background_scan_loop, daemon=True)
     t.start()

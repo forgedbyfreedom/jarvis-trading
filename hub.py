@@ -232,6 +232,33 @@ def coach_ask(question: str, history: list | None = None) -> dict:
     return out
 
 
+def _keep_warm_loop():
+    """Keep Athena's model loaded: other Ollama clients can unload it, and a cold reload costs ~60 s."""
+    while True:
+        try:
+            ps = requests.get(OLLAMA_URL() + "/api/ps", timeout=10).json().get("models", [])
+            mine = [m for m in ps if m.get("name") == COACH_MODEL() or m.get("model") == COACH_MODEL()]
+            exp = mine[0].get("expires_at", "") if mine else ""
+            soon = True
+            if exp:
+                try:
+                    from datetime import datetime, timezone
+                    import re as _re
+                    left = (datetime.fromisoformat(_re.sub(r"\.\d+", "", exp).replace("Z", "+00:00")) - datetime.now(timezone.utc)).total_seconds()
+                    soon = left < 1800
+                except Exception:
+                    soon = True
+            if not mine or soon:
+                coach_warm()
+        except Exception as e:
+            log.debug("keep-warm: %s", e)
+        time.sleep(120)
+
+
+def start_keep_warm():
+    threading.Thread(target=_keep_warm_loop, daemon=True, name="athena-keep-warm").start()
+
+
 def coach_warm():
     """Load the coach model into the GPU so the first answer is quick."""
     try:
