@@ -133,8 +133,27 @@ def _rag_lookup(q: str) -> dict:
         return {}
 
 
+KNOWLEDGE_DIR = os.path.join(C.DATA_DIR, "athena_knowledge")
+_kn_cache = {"key": None, "text": ""}
+
+
+def _athena_knowledge() -> str:
+    """Athena's direct knowledge: every .md in data/athena_knowledge, always in her system prompt."""
+    try:
+        files = sorted(f for f in os.listdir(KNOWLEDGE_DIR) if f.endswith(".md"))
+    except FileNotFoundError:
+        return ""
+    key = tuple((f, os.path.getmtime(os.path.join(KNOWLEDGE_DIR, f))) for f in files)
+    if key != _kn_cache["key"]:
+        parts = [open(os.path.join(KNOWLEDGE_DIR, f), encoding="utf-8").read().strip() for f in files]
+        _kn_cache.update(key=key, text="\n\n".join(parts))
+    return _kn_cache["text"]
+
+
 def _coach_messages(q: str, history, notes: str, srcs: list) -> list:
-    msgs = [{"role": "system", "content": COACH_SYSTEM}]
+    kn = _athena_knowledge()
+    system = COACH_SYSTEM + (f"\n\nWHAT YOU KNOW DIRECTLY (Bryan's own products and facts; trust these over the research notes):\n{kn}" if kn else "")
+    msgs = [{"role": "system", "content": system}]
     for m in (history or [])[-6:]:
         msgs.append({"role": "user" if m.get("role") == "user" else "assistant", "content": (m.get("text") or "")[:1500]})
     user = q
