@@ -4,7 +4,7 @@ Run: uvicorn app:app --reload --port 8080
 """
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.templating import Jinja2Templates
-from fastapi.responses import HTMLResponse
+from fastapi.responses import HTMLResponse, Response
 from pydantic import BaseModel
 from typing import Optional
 import threading, time, logging, os, json
@@ -41,6 +41,73 @@ logging.basicConfig(level=logging.INFO,
 log = logging.getLogger("jarvis")
 
 app = FastAPI(title="Jarvis Command Center", version="3.0.0")
+
+# ── Remote access guard (phone via Twingate) ─────────────────────────────────
+# Requests from this PC pass straight through. Anything else (Twingate / network) must unlock with the PIN
+# kept in data/athena_pin.txt; success sets a signed cookie good for 30 days.
+import hashlib, hmac, secrets
+from fastapi.responses import RedirectResponse
+_PIN_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "data", "athena_pin.txt")
+_LOCAL = {"127.0.0.1", "::1", "localhost"}
+
+
+def _athena_pin():
+    try:
+        return open(_PIN_FILE, encoding="utf-8").read().strip()
+    except OSError:
+        os.makedirs(os.path.dirname(_PIN_FILE), exist_ok=True)
+        pin = f"{secrets.randbelow(10**6):06d}"
+        open(_PIN_FILE, "w", encoding="utf-8").write(pin)
+        return pin
+
+
+def _pin_token():
+    return hmac.new(_athena_pin().encode(), b"athena-remote", hashlib.sha256).hexdigest()
+
+
+_PIN_PAGE = """<!doctype html><html><head><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="apple-mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-title" content="Athena">
+<link rel="apple-touch-icon" href="/static/athena-180.png"><title>Athena</title>
+<style>body{margin:0;height:100vh;display:grid;place-items:center;background:#05070d;color:#e6edf7;font-family:system-ui}
+form{text-align:center}img{width:96px;border-radius:22px}h1{letter-spacing:.2em;font-size:18px;color:#d4a93a}
+input{font-size:28px;letter-spacing:.4em;text-align:center;width:220px;padding:12px;border-radius:12px;border:1px solid #2a3550;background:#0a1222;color:#fff}
+button{display:block;margin:14px auto 0;padding:12px 40px;border:0;border-radius:12px;background:linear-gradient(90deg,#ff3d3d,#ff8a00);color:#fff;font-weight:800;font-size:16px}
+p{color:#ff6b6b;min-height:1em}</style></head><body><form method="post" action="/athena-unlock">
+<img src="/static/athena-180.png" alt=""><h1>ATHENA</h1><input name="pin" type="password" inputmode="numeric" autocomplete="one-time-code" autofocus maxlength="12">
+<p>%ERR%</p><button>Unlock</button></form></body></html>"""
+
+
+@app.middleware("http")
+async def _remote_guard(request: Request, call_next):
+    host = request.client.host if request.client else ""
+    path = request.url.path
+    if host in _LOCAL or path in ("/athena-unlock",) or path.startswith("/static/athena-"):
+        return await call_next(request)
+    if hmac.compare_digest(request.cookies.get("athena", ""), _pin_token()):
+        return await call_next(request)
+    if path.startswith("/api/"):
+        return Response(status_code=401, content='{"detail":"locked"}', media_type="application/json")
+    return HTMLResponse(_PIN_PAGE.replace("%ERR%", ""), status_code=401)
+
+
+_unlock_fails = {}
+
+
+@app.post("/athena-unlock")
+async def athena_unlock(request: Request):
+    host = request.client.host if request.client else "?"
+    n, t0 = _unlock_fails.get(host, (0, 0))
+    if n >= 5 and time.time() - t0 < 900:
+        return HTMLResponse(_PIN_PAGE.replace("%ERR%", "Too many tries — wait 15 minutes"), status_code=429)
+    form = (await request.body()).decode()
+    pin = dict(x.split("=", 1) for x in form.split("&") if "=" in x).get("pin", "")
+    if hmac.compare_digest(pin, _athena_pin()):
+        _unlock_fails.pop(host, None)
+        r = RedirectResponse("/", status_code=303)
+        r.set_cookie("athena", _pin_token(), max_age=30 * 86400, httponly=True, samesite="lax")
+        return r
+    _unlock_fails[host] = (n + 1, time.time() if n == 0 else t0)
+    return HTMLResponse(_PIN_PAGE.replace("%ERR%", "Wrong PIN"), status_code=401)
 app.mount("/static", StaticFiles(directory=os.path.join(os.path.dirname(__file__), "static")), name="static")
 templates = Jinja2Templates(directory=os.path.join(os.path.dirname(__file__), "templates"))
 
