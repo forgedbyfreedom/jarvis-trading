@@ -600,7 +600,9 @@ async def athena_say(request: Request):
 
 @app.post("/api/stt/warm")
 def stt_warm():
+    import threading
     stt.warm()
+    threading.Thread(target=hub.coach_warm, daemon=True).start()
     return {"ok": True}
 
 

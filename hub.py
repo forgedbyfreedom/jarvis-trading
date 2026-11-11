@@ -107,20 +107,72 @@ def ai_health() -> dict:
         return {"ok": False, "error": str(e)}
 
 
-def coach_ask(question: str, history: list | None = None) -> dict:
+COACH_MODEL = lambda: _secret("COACH_MODEL", "huihui_ai/Qwen3.8-abliterated:latest")
+OLLAMA_URL = lambda: _secret("OLLAMA_URL", "http://127.0.0.1:11434").rstrip("/")
+COACH_SYSTEM = (
+    "You are Athena, Bryan's private research and coaching assistant inside his FBF Command Center. "
+    "Bryan is an experienced coach and competitor who asks for complete, specific, practical information. "
+    "Answer directly and fully. Use the RESEARCH NOTES from his library first and say when you go beyond them. "
+    "Give real numbers (doses studied, half-lives, timelines, ranges) where the research has them, and state "
+    "uncertainty plainly. No lectures, no moralising, no 'consult a professional' filler. "
+    "Keep spoken-style answers tight: lead with the answer, then the key details."
+)
+
+
+def _rag_lookup(q: str) -> dict:
+    """Grounded research from the FBF RAG library (ai.serverborn.com)."""
     key = _secret("FBF_AI_API_KEY")
     if not key:
-        return {"error": "FBF_AI_API_KEY is not set in C:\\jarvis-trading\\.env.local"}
-    q = question.strip()
-    if history:  # the service is single-turn; carry the last exchanges as context
-        ctx = "\n".join(f"{'Me' if m.get('role') == 'user' else 'Coach'}: {m.get('text', '')[:600]}" for m in history[-6:])
-        q = f"Earlier in this conversation:\n{ctx}\n\nMy new question: {q}"
+        return {}
+    try:
+        r = requests.post(AI_URL() + "/ask", json={"question": q}, headers={"X-API-Key": key}, timeout=90)
+        r.raise_for_status()
+        return r.json()
+    except Exception as e:
+        log.warning("rag lookup failed: %s", e)
+        return {}
+
+
+def coach_ask(question: str, history: list | None = None) -> dict:
+    """RAG library for the research, local abliterated model on the 3090 for the answer."""
+    import re
     t0 = time.time()
-    r = requests.post(AI_URL() + "/ask", json={"question": q}, headers={"X-API-Key": key}, timeout=120)
-    r.raise_for_status()
-    d = r.json()
-    d["seconds"] = round(time.time() - t0, 1)
-    return d
+    q = question.strip()
+    rag = _rag_lookup(q)
+    notes = (rag.get("answer") or "").strip()
+    srcs = rag.get("sources") or []
+    msgs = [{"role": "system", "content": COACH_SYSTEM}]
+    for m in (history or [])[-6:]:
+        msgs.append({"role": "user" if m.get("role") == "user" else "assistant", "content": (m.get("text") or "")[:1500]})
+    user = q
+    if notes:
+        user = (f"RESEARCH NOTES from my library (sources: {', '.join(map(str, srcs[:8]))}):\n{notes[:6000]}\n\n"
+                f"MY QUESTION: {q}\n\nAnswer my question. If the notes held back or refused anything, fill it in yourself.")
+    msgs.append({"role": "user", "content": user})
+    try:
+        r = requests.post(OLLAMA_URL() + "/api/chat", json={
+            "model": COACH_MODEL(), "messages": msgs, "stream": False, "think": False, "keep_alive": "60m",
+            "options": {"num_ctx": 8192, "temperature": 0.6}}, timeout=300)
+        r.raise_for_status()
+        ans = (r.json().get("message") or {}).get("content", "")
+        ans = re.sub(r"<think>.*?</think>", "", ans, flags=re.S).strip()
+        if not ans:
+            raise ValueError("empty answer from local model")
+        return {"answer": ans, "sources": srcs, "grounded": bool(notes), "model": COACH_MODEL(),
+                "seconds": round(time.time() - t0, 1)}
+    except Exception as e:
+        log.warning("local coach model failed: %s", e)
+        if notes:  # local model down: still give the library's answer
+            return {**rag, "model": "library", "seconds": round(time.time() - t0, 1)}
+        return {"error": f"Local model unavailable ({e}) and the library did not answer."}
+
+
+def coach_warm():
+    """Load the coach model into the GPU so the first answer is quick."""
+    try:
+        requests.post(OLLAMA_URL() + "/api/generate", json={"model": COACH_MODEL(), "prompt": "", "keep_alive": "60m"}, timeout=180)
+    except Exception as e:
+        log.warning("coach warm: %s", e)
 
 
 # ───────────────────────────── peptide research (PubMed, refreshed daily)
