@@ -232,6 +232,18 @@ def coach_ask(question: str, history: list | None = None) -> dict:
     return out
 
 
+def _gpu_job_running() -> bool:
+    """True while an FBF Radio episode is rendering (Chatterbox needs the VRAM Athena's model would take)."""
+    import subprocess
+    try:
+        out = subprocess.run(["powershell", "-NoProfile", "-Command",
+                              "Get-CimInstance Win32_Process -Filter \"Name like 'python%'\" | % CommandLine"],
+                             capture_output=True, text=True, timeout=20, creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0)).stdout
+        return "render_episode" in out
+    except Exception:
+        return False
+
+
 def _keep_warm_loop():
     """Keep Athena's model loaded: other Ollama clients can unload it, and a cold reload costs ~60 s."""
     while True:
@@ -249,6 +261,9 @@ def _keep_warm_loop():
                 except Exception:
                     soon = True
             others = [m for m in ps if m not in mine]
+            if _gpu_job_running():
+                time.sleep(120)
+                continue
             # Another job (e.g. the FBF Council morning run) has the GPU: don't fight it — wait until it's done.
             if not others and (not mine or soon):
                 coach_warm()
