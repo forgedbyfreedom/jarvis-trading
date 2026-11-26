@@ -131,8 +131,9 @@ def onion(query: str, limit: int = 2) -> dict:
         raise ValueError("Tor is still connecting — try the search again in a minute.")
     with tempfile.TemporaryDirectory() as td:
         outf = Path(td) / "out.csv"
-        p = _run([str(ONIONSEARCH), "--proxy", f"127.0.0.1:{port}", "--limit", str(max(1, min(int(limit), 5))),
-                  "--output", str(outf), "--fields", "engine", "name", "link", q], timeout=300)
+        # search words go first: --fields takes a list and would swallow anything after it
+        p = _run([str(ONIONSEARCH), q, "--proxy", f"127.0.0.1:{port}", "--limit", str(max(1, min(int(limit), 5))),
+                  "--output", str(outf), "--fields", "engine", "name", "link"], timeout=300)
         rows = []
         if outf.exists():
             with open(outf, encoding="utf-8", errors="replace") as f:
