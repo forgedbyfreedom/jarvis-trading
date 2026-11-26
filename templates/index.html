@@ -522,6 +522,7 @@ a{color:var(--cyan);text-decoration:none}
 </div></div></div></div>
 
 <div id="p-osint" style="display:none">
+<div class="panel full" style="margin-bottom:1rem"><div class="phead"><h3>Your intel tools</h3><span id="catSum" style="font-size:.75rem;color:var(--dim)"></span></div><div class="pbody" id="catOut"><span style="color:var(--dim)">Loading…</span></div></div>
 <div class="pgrid">
  <div class="panel"><div class="phead"><h3>Domain &amp; infrastructure recon · OpenOSINT</h3></div><div class="pbody">
   <div style="display:flex;gap:.5rem;flex-wrap:wrap;margin-bottom:.6rem">
@@ -914,7 +915,16 @@ async function runCopy(){await fetch(API+'/api/copy/run',{method:'POST'});toast(
 
 /* ── Intel · Research Toolkit ── */
 let OSLIB=[],OSINV=null;
-async function loadOsint(){
+async function loadCatalog(){let c;try{c=await (await fetch(API+'/api/intel/osint/catalog')).json();}catch(e){return;}
+ const esc=t=>String(t).replace(/[&<>"]/g,x=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[x]));
+ document.getElementById('catSum').textContent=`${c.filter(x=>x.ready).length} of ${c.length} ready to run`;
+ document.getElementById('catOut').innerHTML=c.map(t=>`<div class="libitem" style="display:flex;gap:.8rem;align-items:flex-start;flex-wrap:wrap">
+  <div style="flex:1;min-width:240px"><a href="${esc(t.repo)}" target="_blank" rel="noopener noreferrer">${esc(t.name)} ↗</a> <span style="font-size:.68rem;font-weight:700;color:${t.ready?'var(--green)':t.present?'var(--amber)':'var(--red)'}">${t.ready?'● READY':t.present?'● NEEDS SETUP':'● MISSING'}</span>
+  <div style="color:var(--dim);font-size:.74rem">${esc(t.what)}</div>
+  <div style="font-family:var(--mono);font-size:.68rem;color:#8fa3bf;margin-top:.2rem">Run: <span style="user-select:all">${esc(t.run)}</span>${!t.ready&&t.setup!=='—'?`<br>Setup (in its folder): <span style="user-select:all;color:var(--amber)">${esc(t.setup)}</span>`:''}</div></div>
+  <div style="display:flex;gap:.4rem">${t.releases?`<a class="btn btn-ghost" href="${esc(t.releases)}" target="_blank" rel="noopener noreferrer">Releases ↗</a>`:''}<button class="btn btn-ghost" onclick="osOpen('${esc(t.name)}')">Open folder</button></div></div>`).join('');}
+async function osOpen(n){try{const r=await fetch(API+'/api/intel/osint/open/'+encodeURIComponent(n),{method:'POST'});const j=await r.json();if(!r.ok)toast(j.detail||'Failed','err');else toast('Opened '+j.opened);}catch(e){toast(e.message,'err');}}
+async function loadOsint(){loadCatalog();
  try{OSINV=await (await fetch(API+'/api/intel/osint/inventory')).json();}catch(e){return;}
  const k=document.getElementById('osKind');if(!k.options.length)k.innerHTML=Object.entries(OSINV.recon_checks).map(([v,l])=>`<option value="${v}">${l}</option>`).join('');
  document.getElementById('osTor').innerHTML=OSINV.tor_port?`<span style="color:var(--green);font-size:.72rem">● Tor on :${OSINV.tor_port}</span>`:'<span style="color:var(--amber);font-size:.72rem">Tor not running</span>';

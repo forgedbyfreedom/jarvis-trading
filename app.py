@@ -612,6 +612,21 @@ def osint_onion(q: OnionQ):
         raise HTTPException(400, str(e))
 
 
+@app.get("/api/intel/osint/catalog")
+def osint_catalog():
+    return osint_tools.catalog()
+
+
+@app.post("/api/intel/osint/open/{name}")
+def osint_open(name: str, request: Request):
+    if request.client and request.client.host not in ("127.0.0.1", "::1"):
+        raise HTTPException(403, "Opening folders only works on the PC itself")
+    try:
+        return {"opened": osint_tools.open_folder(name)}
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+
+
 @app.get("/api/intel/osint/library")
 def osint_library():
     return osint_tools.library()

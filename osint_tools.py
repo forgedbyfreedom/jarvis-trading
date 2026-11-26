@@ -235,3 +235,69 @@ def inventory() -> dict:
     return {"root": str(ROOT), "folders": folders, "wired": wired,
             "not_wired": [f for f in folders if f in PERSON_TOOLS],
             "recon_checks": {k: v[0] for k, v in RECON.items()}, "tor_port": tor_port(), "crucix": crucix_status()}
+
+
+# ───────────────────────────────────────── catalog: every tool in intel-tools, with links + status
+def _vpy(folder: str) -> Path:
+    return ROOT / folder / ".venv" / ("Scripts/python.exe" if WIN else "bin/python")
+
+
+def _vexe(folder: str, exe: str) -> Path:
+    return ROOT / folder / ".venv" / (f"Scripts/{exe}.exe" if WIN else f"bin/{exe}")
+
+
+CATALOG = [
+    # name, repo, folder, what it does, how to run, setup line (run in that folder), ready-check
+    ("OpenOSINT", "https://github.com/OpenOSINT/OpenOSINT", "OpenOSINT", "Passive recon framework (domain, DNS, WHOIS, IP, news)",
+     r".venv\Scripts\openosint --help", "uv venv .venv; uv pip install --python .venv\\Scripts\\python.exe -e .", lambda: _vexe("OpenOSINT", "openosint").exists()),
+    ("OnionSearch", "https://github.com/megadose/OnionSearch", "OnionSearch", "Searches .onion search engines (needs Tor)",
+     r".venv\Scripts\onionsearch --help", "uv venv .venv; uv pip install --python .venv\\Scripts\\python.exe .", lambda: _vexe("OnionSearch", "onionsearch").exists()),
+    ("Crucix", "https://github.com/calesthio/Crucix", "Crucix", "Local world-intel dashboard, 27 public feeds",
+     "npm start  (or the Start button below)", "npm install", lambda: (ROOT / "Crucix" / "node_modules").exists()),
+    ("Awesome OSINT Arsenal", "https://github.com/rawfilejson/awesome-osint-arsenal", "awesome-osint-arsenal", "753+ tool link list (searchable below)",
+     "—", "—", lambda: (ROOT / "awesome-osint-arsenal").exists()),
+    ("Dark Web OSINT Tools", "https://github.com/apurvsinghgautam/dark-web-osint-tools", "dark-web-osint-tools", "Dark-web tool link list (searchable below)",
+     "—", "—", lambda: (ROOT / "dark-web-osint-tools").exists()),
+    ("Holehe", "https://github.com/megadose/holehe", "holehe", "Checks which sites an email is registered on",
+     r".venv\Scripts\holehe --help", "uv venv .venv; uv pip install --python .venv\\Scripts\\python.exe .", lambda: _vexe("holehe", "holehe").exists()),
+    ("User Scanner", "https://github.com/kaifcodec/user-scanner", "user-scanner", "Username / email presence across sites",
+     r".venv\Scripts\user-scanner --help", "uv venv .venv; uv pip install --python .venv\\Scripts\\python.exe .", lambda: _vexe("user-scanner", "user-scanner").exists()),
+    ("Toutatis", "https://github.com/megadose/toutatis", "toutatis", "Instagram account info (needs an IG session id)",
+     r".venv\Scripts\toutatis -h", "uv venv .venv; uv pip install --python .venv\\Scripts\\python.exe .", lambda: _vexe("toutatis", "toutatis").exists()),
+    ("Mr.Holmes", "https://github.com/Lucksi/Mr.Holmes", "Mr.Holmes", "Interactive info-gathering framework",
+     "Install.cmd once, then: python MrHolmes.py", "Install.cmd", lambda: (ROOT / "Mr.Holmes" / "MrHolmes.py").exists() and (ROOT / "Mr.Holmes" / "Configuration").exists()),
+    ("Tookie OSINT", "https://github.com/Alfredredbird/tookie-osint", "tookie-osint", "Username search across sites",
+     r".venv\Scripts\python brib.py", "uv venv .venv; uv pip install --python .venv\\Scripts\\python.exe -r requirements.txt", lambda: _vpy("tookie-osint").exists()),
+    ("YesItsMe", "https://github.com/0x0be/yesitsme", "yesitsme", "Finds Instagram profiles by name + email/phone hints",
+     r".venv\Scripts\python yesitsme.py -h", "uv venv .venv; uv pip install --python .venv\\Scripts\\python.exe -r requirements.txt", lambda: _vpy("yesitsme").exists()),
+    ("DaProfiler", "https://github.com/daprofiler/DaProfiler", "DaProfiler", "Builds a profile from a name (FR-focused; needs Firefox)",
+     r".venv\Scripts\python profiler.py -h", "uv venv .venv; uv pip install --python .venv\\Scripts\\python.exe -r requirements.txt", lambda: _vpy("DaProfiler").exists()),
+    ("Emora", "https://github.com/IdefaSoft/Emora-Project", "Emora-Project", "Windows GUI username search (121 sites)",
+     "Download the v1.3.0 release .exe, or build Emora.sln in Visual Studio", "Releases page", lambda: any((ROOT / "Emora-Project").rglob("Emora.exe"))),
+]
+
+
+def catalog() -> list[dict]:
+    out = []
+    for name, repo, folder, what, run, setup, ready in CATALOG:
+        path = ROOT / folder
+        try:
+            ok = bool(ready())
+        except Exception:
+            ok = False
+        out.append({"name": name, "repo": repo, "folder": str(path), "present": path.exists(), "ready": ok,
+                    "what": what, "run": run, "setup": setup,
+                    "releases": repo + "/releases" if name == "Emora" else None})
+    return out
+
+
+def open_folder(name: str) -> str:
+    for n, _, folder, *_ in CATALOG:
+        if n == name:
+            p = ROOT / folder
+            if not p.exists():
+                raise ValueError("Folder not found")
+            if WIN:
+                os.startfile(str(p))          # opens Explorer on the PC
+            return str(p)
+    raise ValueError("Unknown tool")
