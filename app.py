@@ -200,7 +200,9 @@ def startup():
 # ── PAGES ──
 @app.get("/", response_class=HTMLResponse)
 def index(request: Request):
-    return templates.TemplateResponse(name="index.html", context={}, request=request)
+    r = templates.TemplateResponse(name="index.html", context={}, request=request)
+    r.headers["Cache-Control"] = "no-store, must-revalidate"   # always serve the latest dashboard
+    return r
 
 # ── SCAN ──
 @app.get("/api/scan")
