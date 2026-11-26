@@ -919,10 +919,15 @@ async function loadCatalog(){let c;try{c=await (await fetch(API+'/api/intel/osin
  const esc=t=>String(t).replace(/[&<>"]/g,x=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[x]));
  document.getElementById('catSum').textContent=`${c.filter(x=>x.ready).length} of ${c.length} ready to run`;
  document.getElementById('catOut').innerHTML=c.map(t=>`<div class="libitem" style="display:flex;gap:.8rem;align-items:flex-start;flex-wrap:wrap">
-  <div style="flex:1;min-width:240px"><a href="${esc(t.repo)}" target="_blank" rel="noopener noreferrer">${esc(t.name)} ↗</a> <span style="font-size:.68rem;font-weight:700;color:${t.ready?'var(--green)':t.present?'var(--amber)':'var(--red)'}">${t.ready?'● READY':t.present?'● NEEDS SETUP':'● MISSING'}</span>
+  <div style="flex:1;min-width:240px"><a href="#" onclick="osLaunch('${esc(t.name)}');return false" title="Open this tool">${esc(t.name)} ▶</a> <a href="${esc(t.repo)}" target="_blank" rel="noopener noreferrer" style="font-size:.68rem;color:var(--dim);font-weight:400;margin:0 .3rem">GitHub ↗</a> <span style="font-size:.68rem;font-weight:700;color:${t.ready?'var(--green)':t.present?'var(--amber)':'var(--red)'}">${t.ready?'● READY':t.present?'● NEEDS SETUP':'● MISSING'}</span>
   <div style="color:var(--dim);font-size:.74rem">${esc(t.what)}</div>
   <div style="font-family:var(--mono);font-size:.68rem;color:#8fa3bf;margin-top:.2rem">Run: <span style="user-select:all">${esc(t.run)}</span>${!t.ready&&t.setup!=='—'?`<br>Setup (in its folder): <span style="user-select:all;color:var(--amber)">${esc(t.setup)}</span>`:''}</div></div>
-  <div style="display:flex;gap:.4rem">${t.releases?`<a class="btn btn-ghost" href="${esc(t.releases)}" target="_blank" rel="noopener noreferrer">Releases ↗</a>`:''}<button class="btn btn-ghost" onclick="osOpen('${esc(t.name)}')">Open folder</button></div></div>`).join('');}
+  <div style="display:flex;gap:.4rem"><button class="btn btn-green" onclick="osLaunch('${esc(t.name)}')">Open</button>${t.releases?`<a class="btn btn-ghost" href="${esc(t.releases)}" target="_blank" rel="noopener noreferrer">Releases ↗</a>`:''}<button class="btn btn-ghost" onclick="osOpen('${esc(t.name)}')">Open folder</button></div></div>`).join('');}
+async function osLaunch(n){try{const r=await fetch(API+'/api/intel/osint/launch/'+encodeURIComponent(n),{method:'POST'});const j=await r.json();
+ if(!r.ok){toast(j.detail||'Failed','err');return;}
+ if(j.url){window.open(j.url,'_blank');return;}
+ if(j.scroll){document.getElementById('libQ').scrollIntoView({behavior:'smooth'});document.getElementById('libQ').focus();return;}
+ toast(n+' opened in a new window on the PC');}catch(e){toast(e.message,'err');}}
 async function osOpen(n){try{const r=await fetch(API+'/api/intel/osint/open/'+encodeURIComponent(n),{method:'POST'});const j=await r.json();if(!r.ok)toast(j.detail||'Failed','err');else toast('Opened '+j.opened);}catch(e){toast(e.message,'err');}}
 async function loadOsint(){loadCatalog();
  try{OSINV=await (await fetch(API+'/api/intel/osint/inventory')).json();}catch(e){return;}

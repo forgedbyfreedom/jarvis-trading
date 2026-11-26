@@ -301,3 +301,45 @@ def open_folder(name: str) -> str:
                 os.startfile(str(p))          # opens Explorer on the PC
             return str(p)
     raise ValueError("Unknown tool")
+
+
+# ───────────────────────────────────────── launch a tool on the PC (opens it ready to use)
+JT_VENV_PY = ROOT.parent / "venv" / "Scripts" / "python.exe"     # where Mr.Holmes' Install.cmd put its packages
+
+LAUNCH = {  # name -> (folder, PowerShell command run in a new window; fixed strings, no user input)
+    "OpenOSINT":   ("OpenOSINT",   r"& .\.venv\Scripts\Activate.ps1; openosint --help"),
+    "OnionSearch": ("OnionSearch", r"& .\.venv\Scripts\Activate.ps1; onionsearch --help; Write-Host 'Needs Tor Browser open. Example: onionsearch --proxy 127.0.0.1:9150 \"search words\"'"),
+    "Holehe":      ("holehe",      r"& .\.venv\Scripts\Activate.ps1; holehe --help; Write-Host 'Example: holehe --only-used name@example.com'"),
+    "User Scanner": ("user-scanner", r"& .\.venv\Scripts\Activate.ps1; user-scanner --help"),
+    "Toutatis":    ("toutatis",    r"& .\.venv\Scripts\Activate.ps1; toutatis -h"),
+    "Tookie OSINT": ("tookie-osint", r"& .\.venv\Scripts\Activate.ps1; python brib.py -h"),
+    "YesItsMe":    ("yesitsme",    r"& .\.venv\Scripts\Activate.ps1; python yesitsme.py -h"),
+    "DaProfiler":  ("DaProfiler",  r"& .\.venv\Scripts\Activate.ps1; python profiler.py -h"),
+    "Mr.Holmes":   ("Mr.Holmes",   r"& '..\..\venv\Scripts\Activate.ps1'; python MrHolmes.py"),
+}
+
+
+def launch(name: str) -> dict:
+    if name == "Crucix":
+        st = crucix_start()
+        return {"url": st["url"], "running": st["running"]}
+    if name == "Emora":
+        exe = next((ROOT / "Emora-Project").rglob("Emora.exe"), None)
+        if not exe:
+            raise ValueError("Emora isn't downloaded yet — use the Releases link and unzip it into the Emora-Project folder")
+        if WIN:
+            os.startfile(str(exe))
+        return {"opened": str(exe)}
+    if name in ("Awesome OSINT Arsenal", "Dark Web OSINT Tools"):
+        return {"scroll": "library"}
+    if name not in LAUNCH:
+        raise ValueError("Unknown tool")
+    folder, cmd = LAUNCH[name]
+    cwd = ROOT / folder
+    if not cwd.exists():
+        raise ValueError("Folder not found: " + str(cwd))
+    if WIN:
+        subprocess.Popen(["powershell.exe", "-NoExit", "-ExecutionPolicy", "Bypass", "-Command",
+                          f"$Host.UI.RawUI.WindowTitle='{name}'; {cmd}"],
+                         cwd=str(cwd), creationflags=subprocess.CREATE_NEW_CONSOLE)
+    return {"opened": str(cwd)}

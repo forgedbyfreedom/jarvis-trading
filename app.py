@@ -627,6 +627,16 @@ def osint_open(name: str, request: Request):
         raise HTTPException(400, str(e))
 
 
+@app.post("/api/intel/osint/launch/{name}")
+def osint_launch(name: str, request: Request):
+    if request.client and request.client.host not in ("127.0.0.1", "::1"):
+        raise HTTPException(403, "Launching tools only works on the PC itself")
+    try:
+        return osint_tools.launch(name)
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+
+
 @app.get("/api/intel/osint/library")
 def osint_library():
     return osint_tools.library()
