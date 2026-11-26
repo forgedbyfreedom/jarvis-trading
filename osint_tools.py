@@ -125,9 +125,10 @@ def onion(query: str, limit: int = 2) -> dict:
         raise ValueError("Use 2–80 letters, numbers and basic punctuation")
     if not ONIONSEARCH.exists():
         raise ValueError("OnionSearch isn't installed")
-    port = tor_port()
-    if not port:
-        raise ValueError("Tor isn't running. Open Tor Browser (or start the Tor service), then search again.")
+    st = tor_start()                           # starts Tor in the background if needed
+    port = st["port"]
+    if not port or not st["ready"]:
+        raise ValueError("Tor is still connecting — try the search again in a minute.")
     with tempfile.TemporaryDirectory() as td:
         outf = Path(td) / "out.csv"
         p = _run([str(ONIONSEARCH), "--proxy", f"127.0.0.1:{port}", "--limit", str(max(1, min(int(limit), 5))),
@@ -343,3 +344,77 @@ def launch(name: str) -> dict:
                           f"$Host.UI.RawUI.WindowTitle='{name}'; {cmd}"],
                          cwd=str(cwd), creationflags=subprocess.CREATE_NEW_CONSOLE)
     return {"opened": str(cwd)}
+
+
+# ───────────────────────────────────────── Tor: auto-start a background tor.exe (no Tor Browser window)
+_tor_proc: subprocess.Popen | None = None
+_tor_lock = threading.Lock()
+TOR_LOG = DATA / "tor.log"
+
+
+def _find_tor() -> Path | None:
+    home = Path.home()
+    cands = [
+        os.environ.get("TOR_EXE", ""),
+        home / "Desktop" / "Tor Browser" / "Browser" / "TorBrowser" / "Tor" / "tor.exe",
+        home / "OneDrive" / "Desktop" / "Tor Browser" / "Browser" / "TorBrowser" / "Tor" / "tor.exe",
+        Path(os.environ.get("LOCALAPPDATA", "")) / "Tor Browser" / "Browser" / "TorBrowser" / "Tor" / "tor.exe",
+        Path(r"C:\Program Files\Tor Browser\Browser\TorBrowser\Tor\tor.exe"),
+        Path(r"C:\Tools\tor\tor\tor.exe"), Path(r"C:\Tools\tor\tor.exe"),      # Tor Expert Bundle
+        ROOT / "tor" / "tor" / "tor.exe", ROOT / "tor" / "tor.exe",
+    ]
+    for c in cands:
+        if c and Path(c).is_file():
+            return Path(c)
+    return None
+
+
+def tor_status() -> dict:
+    port = tor_port()
+    ready = bool(port)
+    if port == 9050 and _tor_proc and _tor_proc.poll() is None:
+        try:
+            ready = "Bootstrapped 100%" in TOR_LOG.read_text(encoding="utf-8", errors="replace")
+        except OSError:
+            ready = False
+    exe = _find_tor()
+    return {"port": port, "ready": ready, "installed": bool(exe), "exe": str(exe) if exe else None}
+
+
+def tor_start(wait: float = 90) -> dict:
+    """Start tor.exe in the background on 127.0.0.1:9050 if no Tor is already running."""
+    global _tor_proc
+    with _tor_lock:
+        if tor_port() and not (_tor_proc and _tor_proc.poll() is None):
+            return tor_status()                    # Tor Browser or a Tor service already running
+        if not (_tor_proc and _tor_proc.poll() is None):
+            exe = _find_tor()
+            if not exe:
+                raise ValueError("Tor isn't installed. Install Tor Browser (torproject.org) once — after that "
+                                 "the Command Center starts Tor by itself, no browser window needed.")
+            DATA.mkdir(exist_ok=True)
+            ddir = DATA / "tor-data"
+            ddir.mkdir(exist_ok=True)
+            TOR_LOG.write_text("", encoding="utf-8")
+            log = open(TOR_LOG, "ab")
+            _tor_proc = subprocess.Popen([str(exe), "--SocksPort", "127.0.0.1:9050", "--DataDirectory", str(ddir),
+                                          "--Log", "notice stdout", "--ClientOnly", "1"],
+                                         cwd=str(exe.parent), stdout=log, stderr=log, creationflags=NOWIN)
+    end = time.time() + wait
+    while time.time() < end:
+        st = tor_status()
+        if st["ready"]:
+            return st
+        if _tor_proc and _tor_proc.poll() is not None:
+            raise ValueError("Tor exited — see data\\tor.log")
+        time.sleep(1)
+    return tor_status()
+
+
+def tor_stop() -> dict:
+    global _tor_proc
+    with _tor_lock:
+        if _tor_proc and _tor_proc.poll() is None:
+            _tor_proc.terminate()
+        _tor_proc = None
+    return tor_status()

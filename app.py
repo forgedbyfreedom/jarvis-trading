@@ -639,6 +639,18 @@ def osint_launch(name: str, request: Request):
         raise HTTPException(400, str(e))
 
 
+@app.post("/api/intel/osint/tor/{action}")
+def osint_tor(action: str):
+    try:
+        if action == "start":
+            return osint_tools.tor_start()
+        if action == "stop":
+            return osint_tools.tor_stop()
+        return osint_tools.tor_status()
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+
+
 @app.get("/api/intel/osint/library")
 def osint_library():
     return osint_tools.library()

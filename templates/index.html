@@ -538,7 +538,7 @@ a{color:var(--cyan);text-decoration:none}
    <input id="onQ" class="osin" style="flex:1" placeholder="e.g. forged by freedom, BPC-157 vendor name" onkeydown="if(event.key==='Enter')osOnion()">
    <button class="btn btn-green" onclick="osOnion()">Search</button>
   </div>
-  <div style="font-size:.72rem;color:var(--dim);margin-bottom:.5rem">Needs Tor running: open Tor Browser first. Results are links only. Open them in Tor Browser, not here. Takes 1–4 minutes.</div>
+  <div style="font-size:.72rem;color:var(--dim);margin-bottom:.5rem">Tor starts automatically in the background when you open this page. Results are links only. Open them in Tor Browser, not here. Takes 1–4 minutes.</div>
   <div id="onOut" class="osout" style="white-space:normal">No search yet.</div>
  </div></div>
 </div>
@@ -932,12 +932,18 @@ async function osOpen(n){try{const r=await fetch(API+'/api/intel/osint/open/'+en
 async function loadOsint(){loadCatalog();
  try{OSINV=await (await fetch(API+'/api/intel/osint/inventory')).json();}catch(e){return;}
  const k=document.getElementById('osKind');if(!k.options.length)k.innerHTML=Object.entries(OSINV.recon_checks).map(([v,l])=>`<option value="${v}">${l}</option>`).join('');
- document.getElementById('osTor').innerHTML=OSINV.tor_port?`<span style="color:var(--green);font-size:.72rem">● Tor on :${OSINV.tor_port}</span>`:'<span style="color:var(--amber);font-size:.72rem">Tor not running</span>';
+ osTorAuto();
  osCrStat(OSINV.crucix);
  document.getElementById('osInv').innerHTML=`Tools folder: <code>${OSINV.root}</code>. Wired here: ${Object.entries(OSINV.wired).filter(x=>x[1]).map(x=>x[0]).join(', ')}.`+(OSINV.not_wired.length?` Installed but not wired into the dashboard (person lookups): ${OSINV.not_wired.join(', ')}.`:'');
  if(!OSLIB.length){try{OSLIB=await (await fetch(API+'/api/intel/osint/library')).json();}catch(e){}osLibRender();}
 }
 function osCrStat(c){document.getElementById('crStat').innerHTML=c.running?`<a href="${c.url}" target="_blank" style="color:var(--green);font-size:.75rem">● running: open ↗</a>`:`<span style="font-size:.75rem;color:var(--dim)">${c.installed?'stopped':'not installed'}</span>`;}
+async function osTorAuto(){const el=document.getElementById('osTor');
+ const show=(st,err)=>{el.innerHTML=err?`<span style="color:var(--amber);font-size:.72rem" title="${err.replace(/"/g,'')}">Tor not installed</span>`:st.ready?`<span style="color:var(--green);font-size:.72rem">● Tor connected :${st.port}</span>`:`<span style="color:var(--amber);font-size:.72rem">◌ Tor connecting…</span>`;};
+ try{let r=await fetch(API+'/api/intel/osint/tor/status',{method:'POST'});let st=await r.json();show(st);
+  if(st.ready)return; if(!st.installed){show(null,'Install Tor Browser once from torproject.org');return;}
+  r=await fetch(API+'/api/intel/osint/tor/start',{method:'POST'});st=await r.json();if(!r.ok){show(null,st.detail||'Tor failed');return;}show(st);
+  if(!st.ready)setTimeout(osTorAuto,5000);}catch(e){}}
 async function osRecon(){const kind=document.getElementById('osKind').value,target=document.getElementById('osTarget').value.trim(),o=document.getElementById('osOut');
  if(!target)return;o.textContent='Running '+kind+' on '+target+'…';
  try{const r=await fetch(API+'/api/intel/osint/recon',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({kind,target})});const j=await r.json();
