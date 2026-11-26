@@ -538,7 +538,7 @@ a{color:var(--cyan);text-decoration:none}
    <input id="onQ" class="osin" style="flex:1" placeholder="e.g. forged by freedom, BPC-157 vendor name" onkeydown="if(event.key==='Enter')osOnion()">
    <button class="btn btn-green" onclick="osOnion()">Search</button>
   </div>
-  <div style="font-size:.72rem;color:var(--dim);margin-bottom:.5rem">Tor starts automatically in the background when you open this page. Results are links only. Open them in Tor Browser, not here. Takes 1–4 minutes.</div>
+  <div style="font-size:.72rem;color:var(--dim);margin-bottom:.5rem">Tor starts automatically in the background when you open this page. Searches tor66 and torgle (the only OnionSearch engines still working). Results are links only. Open them in Tor Browser. Takes about 1–2 minutes.</div>
   <div id="onOut" class="osout" style="white-space:normal">No search yet.</div>
  </div></div>
 </div>
@@ -949,7 +949,7 @@ async function osRecon(){const kind=document.getElementById('osKind').value,targ
  try{const r=await fetch(API+'/api/intel/osint/recon',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({kind,target})});const j=await r.json();
   if(!r.ok){o.textContent='✗ '+(j.detail||r.status);return;}
   o.textContent=`${j.label} · ${j.target}\n\n`+(j.results.join('\n')||'(no results)')+(j.error?`\n\n✗ ${j.error}`:'');}catch(e){o.textContent='✗ '+e.message;}}
-async function osOnion(){const q=document.getElementById('onQ').value.trim(),o=document.getElementById('onOut');if(!q)return;o.textContent='Searching onion engines for "'+q+'"… (1–4 min)';
+async function osOnion(){const q=document.getElementById('onQ').value.trim(),o=document.getElementById('onOut');if(!q)return;o.textContent='Searching onion engines for "'+q+'"… (about 1–2 min)';
  try{const r=await fetch(API+'/api/intel/osint/onion',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({query:q,limit:2})});const j=await r.json();
   if(!r.ok){o.textContent='✗ '+(j.detail||r.status);return;}
   const esc=t=>String(t).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));

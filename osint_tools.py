@@ -36,6 +36,7 @@ NOWIN = subprocess.CREATE_NO_WINDOW if WIN else 0
 OPENOSINT = ROOT / "OpenOSINT" / ".venv" / ("Scripts/openosint.exe" if WIN else "bin/openosint")
 ONIONSEARCH = ROOT / "OnionSearch" / ".venv" / ("Scripts/onionsearch.exe" if WIN else "bin/onionsearch")
 CRUCIX_DIR = ROOT / "Crucix"
+ONION_ENGINES = ["tor66", "torgle"]
 CRUCIX_PORT = 3117
 
 DOMAIN_RE = re.compile(r"^(?=.{3,253}$)([a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,63}$")
@@ -131,9 +132,17 @@ def onion(query: str, limit: int = 2) -> dict:
         raise ValueError("Tor is still connecting — try the search again in a minute.")
     with tempfile.TemporaryDirectory() as td:
         outf = Path(td) / "out.csv"
-        # search words go first: --fields takes a list and would swallow anything after it
-        p = _run([str(ONIONSEARCH), q, "--proxy", f"127.0.0.1:{port}", "--limit", str(max(1, min(int(limit), 5))),
-                  "--output", str(outf), "--fields", "engine", "name", "link"], timeout=300)
+        # Search words go first (--fields takes a list and would swallow them). Only engines that still
+        # return results are used (tested Nov 2026: tor66, torgle; the other 15 in OnionSearch are dead/changed).
+        # --continuous_write keeps partial results if the run is cut off by the timeout.
+        args = [str(ONIONSEARCH), q, "--proxy", f"127.0.0.1:{port}", "--limit", str(max(1, min(int(limit), 5))),
+                "--engines", *ONION_ENGINES, "--continuous_write", "True", "--mp_units", str(len(ONION_ENGINES)),
+                "--output", str(outf), "--fields", "engine", "name", "link"]
+        try:
+            p = _run(args, timeout=240)
+            err = p.stderr
+        except subprocess.TimeoutExpired:
+            err = "Stopped after 4 minutes — showing what came back."
         rows = []
         if outf.exists():
             with open(outf, encoding="utf-8", errors="replace") as f:
@@ -146,7 +155,8 @@ def onion(query: str, limit: int = 2) -> dict:
             seen.add(r["link"])
             uniq.append(r)
     return {"query": q, "results": uniq[:300], "count": len(uniq),
-            "note": None if uniq else ((p.stderr or "")[-300:] or "No results — engines may be down; try again later.")}
+            "engines": ONION_ENGINES,
+            "note": None if uniq else ((err or "")[-300:] or "No results — the onion engines may be down; try again later.")}
 
 
 # ───────────────────────────────────────── Crucix
