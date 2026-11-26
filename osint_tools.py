@@ -308,7 +308,7 @@ JT_VENV_PY = ROOT.parent / "venv" / "Scripts" / "python.exe"     # where Mr.Holm
 
 LAUNCH = {  # name -> (folder, PowerShell command run in a new window; fixed strings, no user input)
     "OpenOSINT":   ("OpenOSINT",   r"& .\.venv\Scripts\Activate.ps1; openosint --help"),
-    "OnionSearch": ("OnionSearch", r"& .\.venv\Scripts\Activate.ps1; onionsearch --help; Write-Host 'Needs Tor Browser open. Example: onionsearch --proxy 127.0.0.1:9150 \"search words\"'"),
+    "OnionSearch": ("OnionSearch", r"& .\.venv\Scripts\Activate.ps1; onionsearch --help; Write-Host 'Needs Tor Browser open. Example:  onionsearch --proxy 127.0.0.1:9150 --limit 2 search words'"),
     "Holehe":      ("holehe",      r"& .\.venv\Scripts\Activate.ps1; holehe --help; Write-Host 'Example: holehe --only-used name@example.com'"),
     "User Scanner": ("user-scanner", r"& .\.venv\Scripts\Activate.ps1; user-scanner --help"),
     "Toutatis":    ("toutatis",    r"& .\.venv\Scripts\Activate.ps1; toutatis -h"),
