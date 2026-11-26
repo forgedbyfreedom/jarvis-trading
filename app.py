@@ -513,6 +513,84 @@ def api_copy_reset():
     return {"status": "reset"}
 
 
+# ── CopyBot US execution (Kalshi perps + Coinbase US perps): shadow book, live switch, kill switch ──
+import copy_live
+import radio_proxy
+
+
+class CopyLiveSettings(BaseModel):
+    capital_cap: Optional[float] = None
+    max_leverage: Optional[float] = None
+    daily_loss_pct: Optional[float] = None
+    venues: Optional[list[str]] = None
+
+
+class CopyArm(BaseModel):
+    confirm: str = ""
+    override: str = ""
+
+
+def _sim_stats():
+    s = copy_sim.summary()
+    return s["stats"]
+
+
+@app.get("/api/copy/live/summary")
+def api_copy_live_summary():
+    return copy_live.summary(_sim_stats())
+
+
+@app.post("/api/copy/live/test")
+def api_copy_live_test():
+    return copy_live.test_connections()
+
+
+@app.post("/api/copy/live/settings")
+def api_copy_live_settings(body: CopyLiveSettings):
+    try:
+        return copy_live.update_settings(**body.model_dump() if hasattr(body, "model_dump") else body.dict())
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+
+
+@app.post("/api/copy/live/arm")
+def api_copy_live_arm(body: CopyArm):
+    try:
+        return copy_live.arm(_sim_stats(), body.confirm, body.override)
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+
+
+@app.post("/api/copy/live/disarm")
+def api_copy_live_disarm():
+    return copy_live.disarm()
+
+
+@app.post("/api/copy/live/kill")
+def api_copy_live_kill():
+    return copy_live.kill()
+
+
+@app.post("/api/copy/live/reset-shadow")
+def api_copy_live_reset_shadow():
+    copy_live.reset_shadow()
+    return {"status": "reset"}
+
+
+# ── FBF Radio / music mini-player feeds (proxied so the browser has no CORS issues) ──
+@app.get("/api/radio/playlists")
+def api_radio_playlists():
+    return radio_proxy.playlists()
+
+
+@app.get("/api/radio/tracks")
+def api_radio_tracks(playlist: str = "radio"):
+    try:
+        return radio_proxy.tracks(playlist)
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+
+
 # ═══════════════════════════════════════════
 #  HUB: link tiles, tile status, AI Coach, peptide research
 # ═══════════════════════════════════════════

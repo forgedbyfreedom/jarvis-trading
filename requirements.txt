@@ -15,3 +15,5 @@ av==15.1.0  # av 16+ breaks faster-whisper decode_audio
 nvidia-cublas-cu12; sys_platform == "win32"
 nvidia-cudnn-cu12==9.*; sys_platform == "win32"
 edge-tts
+cryptography>=42
+PyJWT>=2.8

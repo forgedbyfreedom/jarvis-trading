@@ -183,6 +183,46 @@ a{color:var(--cyan);text-decoration:none}
 #athenaFab{position:fixed;right:22px;bottom:22px;z-index:9999;display:flex;align-items:center;gap:10px;padding:12px 20px 12px 14px;border:0;border-radius:999px;
  background:linear-gradient(90deg,#ff3d3d,#ff8a00);color:#fff;font-weight:800;letter-spacing:.06em;font-size:14px;cursor:pointer;box-shadow:0 8px 30px rgba(255,90,30,.45)}
 #athenaFab img{width:30px;height:30px;border-radius:8px}
+.radio-btn{background:#2a2108!important;color:#f3cf6b!important;margin-right:6px}
+.radio-btn.on{background:linear-gradient(90deg,#b8891f,#f3cf6b)!important;color:#141006!important}
+#radioFab{position:fixed;right:22px;bottom:84px;z-index:9999;display:flex;align-items:center;gap:8px;padding:9px 16px 9px 12px;border:1px solid rgba(243,207,107,.45);border-radius:999px;
+ background:rgba(20,16,6,.92);color:#f3cf6b;font-weight:800;letter-spacing:.08em;font-size:12px;cursor:pointer;box-shadow:0 6px 24px rgba(0,0,0,.5);backdrop-filter:blur(6px)}
+#radioFab:hover{border-color:#f3cf6b}
+#radioFab .rf-ic{font-size:16px}
+#radioFab .rf-eq{display:none;align-items:flex-end;gap:2px;height:12px}
+#radioFab .rf-eq i{display:block;width:3px;background:#f3cf6b;border-radius:1px;animation:rfeq .9s ease-in-out infinite}
+#radioFab .rf-eq i:nth-child(2){animation-delay:.2s}#radioFab .rf-eq i:nth-child(3){animation-delay:.45s}
+#radioFab.playing .rf-eq{display:flex}
+@keyframes rfeq{0%,100%{height:3px}50%{height:12px}}
+#radioPop{position:fixed;right:22px;bottom:134px;z-index:10000;width:340px;max-width:calc(100vw - 30px);display:none;padding:14px;border-radius:16px;
+ background:rgba(12,12,10,.97);border:1px solid rgba(243,207,107,.3);box-shadow:0 18px 50px rgba(0,0,0,.6);color:#e8e2cf;font-size:13px}
+#radioPop.open{display:block}
+.rp-head{display:flex;gap:8px;margin-bottom:10px}
+.rp-head select{flex:1;background:#1b1810;color:#f3cf6b;border:1px solid rgba(243,207,107,.3);border-radius:8px;padding:7px;font-weight:700}
+.rp-x{background:none;border:0;color:#9a917a;font-size:18px;cursor:pointer}
+.rp-now{display:flex;gap:10px;align-items:center}
+.rp-now img{width:56px;height:56px;border-radius:8px;object-fit:cover;background:#1b1810}
+.rp-meta{min-width:0}#rpTitle{font-weight:700;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#rpSub{color:#9a917a;font-size:11px;margin-top:2px}
+.rp-bar{height:6px;background:#2a261a;border-radius:3px;margin:12px 0 4px;cursor:pointer}
+#rpFill{height:100%;width:0;background:linear-gradient(90deg,#b8891f,#f3cf6b);border-radius:3px}
+.rp-time{display:flex;justify-content:space-between;color:#9a917a;font-size:10px;font-family:var(--mono)}
+.rp-ctl{display:flex;align-items:center;gap:6px;margin:8px 0}
+.rp-ctl button{background:#1b1810;border:1px solid rgba(243,207,107,.2);color:#f3cf6b;border-radius:8px;width:36px;height:34px;cursor:pointer;font-size:14px}
+.rp-ctl button.on{background:#3a2f0e}
+.rp-ctl .rp-main{width:46px;height:40px;background:linear-gradient(90deg,#b8891f,#f3cf6b);color:#141006;font-size:16px;border:0}
+.rp-ctl input{flex:1;accent-color:#f3cf6b}
+.rp-tracks{max-height:190px;overflow-y:auto;border-top:1px solid rgba(243,207,107,.12);margin-top:6px;padding-top:6px}
+.rp-tracks div{padding:5px 6px;border-radius:6px;cursor:pointer;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:#cfc8b2}
+.rp-tracks div:hover{background:#1b1810}.rp-tracks div.cur{color:#f3cf6b;font-weight:700}
+.rp-note{color:#6f6855;font-size:10px;margin-top:6px}
+.cb-check{display:flex;justify-content:space-between;gap:.6rem;padding:.45rem .6rem;border-radius:6px;font-size:.8rem;margin-bottom:.3rem;background:rgba(255,255,255,.02)}
+.cb-check .ok{color:var(--green)}.cb-check .no{color:var(--red)}
+.cb-field{display:flex;align-items:center;justify-content:space-between;gap:.6rem;font-size:.8rem;margin:.35rem 0}
+.cb-field input[type=number],.cb-field input[type=text]{width:110px;background:#0a1222;border:1px solid var(--border);color:var(--text);border-radius:6px;padding:.35rem .5rem;font-family:var(--mono)}
+.cb-armed{padding:.25rem .7rem;border-radius:12px;font-size:.7rem;font-weight:800;letter-spacing:.08em}
+.cb-armed.on{background:rgba(0,255,136,.15);color:var(--green);animation:talkpulse 1.6s infinite}.cb-armed.off{background:rgba(255,255,255,.05);color:var(--dim)}
+.btn-kill{background:linear-gradient(90deg,#ff2244,#ff6a00);color:#fff;font-weight:800;letter-spacing:.06em}
 #athenaFab.on{animation:talkpulse 1.6s infinite}
 </style>
 </head>
@@ -224,6 +264,7 @@ a{color:var(--cyan);text-decoration:none}
    <div class="tile" data-t="stocks"><span class="ic">📈</span><span class="tt">Stock Trading</span><span class="st" data-s="stocks">—</span></div>
    <div class="tile" data-t="crypto"><span class="ic">₿</span><span class="tt">Crypto Trading</span><span class="st" data-s="crypto">—</span></div>
    <div class="tile" data-t="dryrun"><span class="ic">🧪</span><span class="tt">Dry Run &amp; Fees</span><span class="st" data-s="dryrun">—</span></div>
+   <div class="tile hot" data-t="copybot"><span class="ic">🤖</span><span class="tt">CopyBot Live</span><span class="st" data-s="copybot">US venues · shadow</span></div>
    <div class="tile" data-t="autotrade"><span class="ic">⚙️</span><span class="tt">Auto-Trade</span><span class="st" data-s="autotrade">Engine</span></div>
    <div class="tile" data-t="signals"><span class="ic">📡</span><span class="tt">Signals</span><span class="st">All assets</span></div>
    <div class="tile" data-t="advisory"><span class="ic">🧭</span><span class="tt">Advisory</span><span class="st">Today's read</span></div>
@@ -309,6 +350,31 @@ a{color:var(--cyan);text-decoration:none}
 <div class="panel full"><div class="phead"><h3>Fees &amp; costs the simulator charges</h3></div><div class="pbody" id="feeBody"><span style="color:var(--dim)">Loading…</span></div></div>
 </div>
 
+<!-- ═══ COPYBOT LIVE (US venues) ═══ -->
+<div id="p-copybot" style="display:none">
+<div class="panel full" style="margin-bottom:1rem">
+ <div class="phead"><h3>CopyBot · rules-based copy trading</h3><div style="display:flex;gap:.5rem"><button class="btn btn-ghost" onclick="runCopy()">Run cycle now</button><button class="btn btn-ghost" onclick="loadCB()">⟳ Refresh</button></div></div>
+ <div class="pbody"><div class="stats" id="cbStats"></div><div id="cbChart"></div><div id="cbGaps" style="font-size:.75rem;color:var(--dim)"></div></div>
+</div>
+<div class="pgrid">
+ <div class="panel"><div class="phead"><h3>Go-live readiness</h3></div><div class="pbody" id="cbReady"><span style="color:var(--dim)">Loading…</span></div></div>
+ <div class="panel"><div class="phead"><h3>Live trading switch</h3><span id="cbArmBadge"></span></div><div class="pbody" id="cbLive"><span style="color:var(--dim)">Loading…</span></div></div>
+</div>
+<div class="panel full" style="margin-bottom:1rem"><div class="phead"><h3>US shadow book · Kalshi perps + Coinbase US perps · exact contracts &amp; fees</h3><button class="btn btn-ghost" onclick="cbResetShadow()">Restart shadow</button></div><div class="pbody" id="cbShadow"><span style="color:var(--dim)">Loading…</span></div></div>
+<div class="panel full"><div class="phead"><h3>How to switch on real money</h3></div><div class="pbody" id="cbHow" style="font-size:.82rem;line-height:1.6">
+<ol style="margin:0 0 0 1.1rem;padding:0">
+<li><b>Get venue access.</b> Kalshi perps (primary — 1-contract minimums of a few dollars) are rolling out member by member: apply in your Kalshi account. Coinbase US perp-style futures need the derivatives application in Coinbase Advanced. Either one is enough to start.</li>
+<li><b>Create trade-only API keys</b> — no withdraw, no transfer permission. Save the key file somewhere on this PC (e.g. <code>C:\Users\you\keys\kalshi.pem</code>).</li>
+<li><b>Type them into <code>C:\jarvis-trading\.env.local</code> yourself</b> (never paste keys in chat):<br><code>KALSHI_API_KEY_ID=…</code> · <code>KALSHI_PRIVATE_KEY_PATH=…</code> · <code>COINBASE_CDP_KEY_NAME=…</code> · <code>COINBASE_CDP_PRIVATE_KEY_PATH=…</code></li>
+<li><b>Click Test connection.</b> Read-only: it checks balance and positions, never places an order.</li>
+<li><b>Fund the venue account</b> from your bank inside Kalshi / Coinbase. Start small.</li>
+<li><b>Set the capital cap, then arm.</b> The bot sizes off the cap, never the whole balance. Adding money later = deposit at the venue, then raise the cap here.</li>
+<li><b>Let it run alongside the shadow book for 2–4 weeks</b> before raising the cap. If live and shadow drift apart, disarm and look.</li>
+</ol>
+<div style="color:var(--dim);margin-top:.6rem;font-size:.74rem">Not financial advice. Copy trading leveraged perpetuals can lose money fast; the daily loss stop and kill switch limit damage but can't prevent gaps between cycles. Hyperliquid is used only as a public signal source — orders go to US-regulated venues.</div>
+</div></div>
+</div>
+
 <!-- ═══ ADVISORY ═══ -->
 <div id="p-advisory" style="display:none">
 <div class="panel full">
@@ -378,6 +444,7 @@ a{color:var(--cyan);text-decoration:none}
   <div class="ask-shell" id="askShell">
    <textarea id="coachQ" rows="2" placeholder="Ask the FBF AI Coach: training, nutrition, peptides, bloodwork, protocols…"></textarea>
    <button class="ask-go talk-btn" id="talkBtn" onclick="talkToggle()" title="Hands-free conversation with Athena">🎙 Talk to Athena</button>
+   <button class="ask-go radio-btn" id="radioBtnInline" onclick="radioToggle()" title="FBF Radio — play music while you work">📻 Radio</button>
    <button class="ask-go" id="coachGo" onclick="coachSend()">Ask ➜</button>
   </div>
   <div class="talk-state" id="talkState"></div>
@@ -458,6 +525,22 @@ a{color:var(--cyan);text-decoration:none}
 
 </div><!-- end .wrap -->
 <button id="athenaFab" onclick="athenaFab()" title="Talk to Athena"><img src="/static/athena-180.png" alt="">TALK TO ATHENA</button>
+<button id="radioFab" onclick="radioToggle()" title="FBF Radio"><span class="rf-ic">📻</span><span id="radioFabTxt">FBF RADIO</span><span class="rf-eq" aria-hidden="true"><i></i><i></i><i></i></span></button>
+<div id="radioPop" role="dialog" aria-label="FBF Radio player">
+ <div class="rp-head"><select id="rpList" onchange="radioLoad(this.value,true)"><option>Loading…</option></select><button class="rp-x" onclick="radioToggle(false)" title="Hide (keeps playing)">▾</button></div>
+ <div class="rp-now"><img id="rpCover" alt=""><div class="rp-meta"><div id="rpTitle">Pick a playlist and hit play</div><div id="rpSub"></div></div></div>
+ <div class="rp-bar" id="rpBar" onclick="radioSeek(event)"><div id="rpFill"></div></div>
+ <div class="rp-time"><span id="rpCur">0:00</span><span id="rpDur">0:00</span></div>
+ <div class="rp-ctl">
+  <button onclick="radioShuffle()" id="rpShuf" title="Shuffle">🔀</button>
+  <button onclick="radioStep(-1)" title="Previous">⏮</button>
+  <button onclick="radioPlayPause()" id="rpPlay" class="rp-main" title="Play / pause">▶</button>
+  <button onclick="radioStep(1)" title="Next">⏭</button>
+  <input type="range" id="rpVol" min="0" max="1" step="0.01" value="0.7" oninput="radioVol(this.value)" title="Volume">
+ </div>
+ <div class="rp-tracks" id="rpTracks"></div>
+ <div class="rp-note">Music dips automatically while you talk to Athena.</div>
+</div>
 
 <!-- ═══ TRADE MODAL ═══ -->
 <div class="mol" id="molEx"><div class="mbox">
@@ -479,8 +562,8 @@ FBFNeural.mount(document.getElementById('heroCanvas'),{brainUrl:'/static/brain.b
 /* ═══ DASHBOARD ENGINE ═══ */
 const API='';
 setInterval(()=>{document.getElementById('clk').textContent=new Date().toLocaleTimeString();},1000);
-const tabs=['dashboard','stocks','crypto','dryrun','autotrade','advisory','signals','portfolio','backtest','audit','coach','peptides','sports','godseye','verify','trends','clients'];
-const loaders={dashboard:()=>loadDash(),stocks:()=>loadMarket('stock'),crypto:()=>loadMarket('crypto'),dryrun:()=>loadDry(),autotrade:()=>loadAT(),
+const tabs=['dashboard','stocks','crypto','dryrun','copybot','autotrade','advisory','signals','portfolio','backtest','audit','coach','peptides','sports','godseye','verify','trends','clients'];
+const loaders={dashboard:()=>loadDash(),stocks:()=>loadMarket('stock'),crypto:()=>loadMarket('crypto'),dryrun:()=>loadDry(),copybot:()=>loadCB(),autotrade:()=>loadAT(),
  advisory:()=>loadAdvisory(),signals:()=>loadScan(),portfolio:()=>loadPF(),audit:()=>loadAudit(),coach:()=>openCoach(),peptides:()=>loadPeptides(false),sports:()=>openSports(),godseye:()=>openGodsEye(),verify:()=>rgLoad(),trends:()=>loadTrends(false),clients:()=>fcLoad()};
 function showTab(t){
  document.querySelectorAll('.tile[data-t]').forEach(x=>x.classList.toggle('on',x.dataset.t===t));
@@ -791,6 +874,120 @@ async function resetPM(){if(!confirm('Reset the Polymarket simulation?'))return;
 async function resetCopy(){if(!confirm('Reset the CopyBot simulation?'))return;await fetch(API+'/api/copy/reset',{method:'POST'});loadDry();}
 async function runCopy(){await fetch(API+'/api/copy/run',{method:'POST'});toast('CopyBot cycle started (takes ~1 min)');setTimeout(loadDry,60000);}
 
+
+/* ── COPYBOT LIVE (US venues) ── */
+function cbSpark(series,w=760,h=120){
+ // Plot % return from each book's own start so books of different sizes compare fairly.
+ series=series.map(s=>{const b=(s.pts[0]||[0,1])[1]||1;return {...s,pts:s.pts.map(p=>[p[0],(p[1]/b-1)*100])};});
+ const all=series.flatMap(s=>s.pts.map(p=>p[1]));if(all.length<2)return '<div style="color:var(--dim);font-size:.75rem">Equity chart fills in after a few cycles.</div>';
+ const mn=Math.min(...all),mx=Math.max(...all),rg=(mx-mn)||1;
+ const path=pts=>pts.map((p,i)=>`${i?'L':'M'}${(i/(Math.max(pts.length-1,1))*w).toFixed(1)},${(h-4-(p[1]-mn)/rg*(h-8)).toFixed(1)}`).join('');
+ return `<svg viewBox="0 0 ${w} ${h}" style="width:100%;height:${h}px;display:block">${series.map(s=>`<path d="${path(s.pts)}" fill="none" stroke="${s.c}" stroke-width="1.8"/>`).join('')}</svg>
+ <div style="font-size:.7rem;color:var(--dim);display:flex;gap:1rem">${series.map(s=>`<span><span style="color:${s.c}">━</span> ${s.n}</span>`).join('')}<span style="margin-left:auto">${mn.toFixed(2)}% to ${mx.toFixed(2)}% from start</span></div>`;
+}
+async function loadCB(){
+ let c,L;
+ try{[c,L]=await Promise.all(['/api/copy/summary','/api/copy/live/summary'].map(u=>fetch(API+u).then(r=>r.json())));}
+ catch(e){document.getElementById('cbStats').innerHTML='<span style="color:var(--red)">Could not load CopyBot data</span>';return;}
+ const st=c.stats||{},sh=L.shadow,lv=L.live;
+ const pct=v=>v==null?'–':(v>0?'+':'')+v.toFixed(1)+'%';
+ document.getElementById('cbStats').innerHTML=`
+<div class="stat"><div class="stat-val cyan">${money(c.equity)}</div><div class="stat-lbl">Sim equity (HL, of ${money(c.starting_capital)})</div></div>
+<div class="stat"><div class="stat-val ${cls(c.pnl_total)}">${money(c.pnl_total)}</div><div class="stat-lbl">Sim net P&L · ${pct(st.return_pct)}</div></div>
+<div class="stat"><div class="stat-val ${cls(sh.pnl_total)}">${money(sh.equity)}</div><div class="stat-lbl">US shadow (${money(sh.pnl_total)})</div></div>
+<div class="stat"><div class="stat-val ${st.btc_hold_return_pct==null?'cyan':cls((st.return_pct||0)-st.btc_hold_return_pct)}">${pct(st.btc_hold_return_pct)}</div><div class="stat-lbl">BTC buy &amp; hold, same period</div></div>
+<div class="stat"><div class="stat-val ${st.max_drawdown_pct>15?'red':'amber'}">${(st.max_drawdown_pct||0).toFixed(1)}%</div><div class="stat-lbl">Max drawdown</div></div>
+<div class="stat"><div class="stat-val cyan">${st.sharpe??'–'}</div><div class="stat-lbl">Sharpe (needs 5+ days)</div></div>
+<div class="stat"><div class="stat-val cyan">${(st.days_running||0).toFixed(1)}</div><div class="stat-lbl">Days in clean record</div></div>
+<div class="stat"><div class="stat-val ${st.gaps?'amber':'green'}">${st.gaps||0}</div><div class="stat-lbl">Offline gaps (${(st.gap_hours||0).toFixed(1)} h)</div></div>`;
+ document.getElementById('cbChart').innerHTML=cbSpark([{n:'Sim (Hyperliquid prices)',c:'#00d4ff',pts:c.equity_curve||[]},{n:'US shadow (Kalshi/Coinbase)',c:'#f3cf6b',pts:sh.equity_curve||[]},...(lv.equity_curve&&lv.equity_curve.length?[{n:'LIVE',c:'#00ff88',pts:lv.equity_curve}]:[])]);
+ document.getElementById('cbGaps').innerHTML=(st.gap_list||[]).length?'Offline periods (bot re-synced to the leaders on restart): '+st.gap_list.map(g=>`${g.from.replace('T',' ')} → ${g.to.slice(11)} (${g.hours} h)`).join(' · '):`Record v${c.record_version||2} started ${(c.started_at||'').replace('T',' ').slice(0,16)} UTC · no offline gaps`;
+ const R=L.readiness;
+ document.getElementById('cbReady').innerHTML=`<div style="font-size:.85rem;margin-bottom:.6rem">${R.ready?'<b style="color:var(--green)">✓ Ready to go live</b> — every rule is met.':'<b style="color:var(--amber)">Not ready yet</b> — the bot earns the switch by the numbers, not by a feeling.'}</div>
+ ${R.checks.map(k=>`<div class="cb-check"><span><span class="${k.ok?'ok':'no'}">${k.ok?'✓':'✗'}</span> ${k.label}</span><span style="font-family:var(--mono);color:var(--dim)">${k.value}</span></div>`).join('')}`;
+ const S=lv.settings,ven=L.venues;
+ document.getElementById('cbArmBadge').innerHTML=`<span class="cb-armed ${lv.armed?'on':'off'}">${lv.armed?'● LIVE · ARMED':'OFF · SHADOW ONLY'}</span>`;
+ const conn=v=>{const k=lv.keys[v],t=lv.connections[v];return !k?'<span style="color:var(--dim)">no keys</span>':t?(t.ok?'<span style="color:var(--green)">✓ connected</span>':`<span style="color:var(--red)" title="${(t.error||'').replace(/"/g,'')}">✗ failed</span>`):'<span style="color:var(--amber)">untested</span>';};
+ const bal=Object.entries(lv.venue_balances||{}).map(([v,b])=>`${ven[v].name} ${money(b.equity)}`).join(' · ');
+ document.getElementById('cbLive').innerHTML=`
+ ${['kalshi','coinbase'].map(v=>`<div class="cb-field"><span>${ven[v].name} <span style="color:var(--dim)">· ${ven[v].fee} · ${ven[v].coins.length} coins</span></span>${conn(v)}</div>`).join('')}
+ <button class="btn btn-ghost" style="width:100%;margin:.3rem 0 .6rem" onclick="cbTest()">Test connection (read-only)</button>
+ <div class="cb-field"><span>Capital cap — the most the bot will size off</span><input type="number" id="cbCap" min="1" max="${lv.hard_max_capital}" step="50" value="${S.capital_cap}"></div>
+ <div class="cb-field"><span>Max gross leverage</span><input type="number" id="cbLev" min="0.5" max="3" step="0.5" value="${S.max_leverage}"></div>
+ <div class="cb-field"><span>Daily loss stop (flatten &amp; disarm)</span><input type="number" id="cbDL" min="1" max="15" step="0.5" value="${S.daily_loss_pct}"></div>
+ <div class="cb-field"><span>Venues</span><span>${['kalshi','coinbase'].map(v=>`<label style="margin-left:.6rem"><input type="checkbox" class="cbVen" value="${v}" ${S.venues.includes(v)?'checked':''}> ${v==='kalshi'?'Kalshi':'Coinbase'}</label>`).join('')}</span></div>
+ <button class="btn btn-ghost" style="width:100%;margin:.3rem 0 .8rem" onclick="cbSave()">Save settings</button>
+ ${lv.armed?`<div style="font-size:.8rem;margin-bottom:.5rem">Live equity <b style="font-family:var(--mono)">${lv.equity!=null?money(lv.equity):'–'}</b>${bal?` · ${bal}`:''} · last cycle ${(lv.last_cycle||'–').replace('T',' ').slice(5,16)}${lv.last_error?`<br><span style="color:var(--red)">${lv.last_error}</span>`:''}</div>
+ <div style="display:flex;gap:.5rem"><button class="btn btn-ghost" style="flex:1" onclick="cbDisarm()">Disarm (keep positions)</button><button class="btn btn-kill" style="flex:1" onclick="cbKill()">■ KILL SWITCH</button></div>`
+ :`<div class="cb-field"><span>Type <b>ARM</b> to confirm</span><input type="text" id="cbConfirm" placeholder="ARM" autocomplete="off"></div>
+ ${R.ready?'':'<div class="cb-field"><span style="color:var(--amber)">Readiness not met — type <b>OVERRIDE</b> to arm anyway</span><input type="text" id="cbOverride" placeholder="" autocomplete="off"></div>'}
+ <div style="display:flex;gap:.5rem"><button class="btn btn-green" style="flex:2" onclick="cbArm()">Arm live trading</button><button class="btn btn-kill" style="flex:1" onclick="cbKill()" title="Cancel all orders and close every CopyBot position on both venues">■ KILL</button></div>`}
+ ${lv.halted_today?'<div style="color:var(--red);font-size:.78rem;margin-top:.5rem">Daily loss stop fired today — flat and disarmed.</div>':''}
+ ${(lv.recent_trades||[]).length?`<div style="font-size:.75rem;color:var(--dim);margin:.8rem 0 .3rem">Live orders</div>${lv.recent_trades.slice(0,8).map(t=>`<div class="sig" style="font-family:var(--mono);font-size:.72rem;padding:.4rem .6rem">${t.t} ${t.side||''} ${t.contracts||''} ${t.coin} · ${t.venue}${t.error?` <span style="color:var(--red)">${t.error.slice(0,90)}</span>`:''}</div>`).join('')}`:''}
+ ${(lv.events||[]).length?`<div style="font-size:.75rem;color:var(--dim);margin:.8rem 0 .3rem">Switch log</div>${lv.events.slice(0,6).map(e=>`<div style="font-size:.7rem;color:var(--dim);font-family:var(--mono)">${e.t.replace('T',' ').slice(5,16)} <b style="color:${e.kind==='arm'?'var(--green)':e.kind==='error'||e.kind==='flatten'?'var(--red)':'var(--text)'}">${e.kind}</b> ${e.msg.slice(0,140)}</div>`).join('')}`:''}`;
+ document.getElementById('cbShadow').innerHTML=`<div class="stats">
+<div class="stat"><div class="stat-val ${cls(sh.pnl_total)}">${money(sh.pnl_total)}</div><div class="stat-lbl">Net P&L (of ${money(sh.starting_capital)})</div></div>
+<div class="stat"><div class="stat-val red">-${money((sh.costs.trading_fee||0)+(sh.costs.slippage||0)+(sh.costs.funding||0))}</div><div class="stat-lbl">Fees ${money(sh.costs.trading_fee)} · slip ${money(sh.costs.slippage)} · funding ${money(sh.costs.funding)}</div></div>
+<div class="stat"><div class="stat-val amber">${sh.max_drawdown_pct}%</div><div class="stat-lbl">Max drawdown</div></div>
+<div class="stat"><div class="stat-val ${sh.coverage_pct>=60?'green':'amber'}">${sh.coverage_pct??'–'}%</div><div class="stat-lbl">Leader exposure tradable in US</div></div></div>
+ ${sh.positions.map(p=>`<div class="sig" style="display:flex;justify-content:space-between;font-family:var(--mono);font-size:.75rem"><span>${p.coin} <span class="badge ${p.side==='LONG'?'BUY':'SELL'}" style="font-size:.6rem">${p.side}</span> <span style="color:var(--dim)">${Math.abs(p.contracts)} × ${p.symbol} · ${p.venue}</span></span><span>${money(p.notional)} · <span class="pos-pnl ${p.pnl>=0?'pos':'neg'}">${money(p.pnl)}</span></span></div>`).join('')||'<span style="color:var(--dim)">No positions yet — the next cycle opens them.</span>'}
+ ${sh.skipped.length?`<div style="font-size:.72rem;color:var(--amber);margin-top:.5rem">Skipped: ${sh.skipped.map(k=>`${k.coin} (${money(k.target)} — ${k.why})`).join(' · ')}</div>`:''}
+ ${sh.recent_trades.length?`<div style="font-size:.72rem;color:var(--dim);margin-top:.6rem">Recent: ${sh.recent_trades.slice(0,10).map(t=>`${t.t} ${t.side} ${t.contracts} ${t.coin} @${t.px}`).join(' · ')}</div>`:''}
+ <div style="font-size:.7rem;color:var(--dim);margin-top:.5rem">Kalshi perps: ${ven.kalshi.coins.join(', ')||'–'}<br>Coinbase US perps: ${ven.coinbase.coins.join(', ')||'–'}</div>`;
+ cbTile(lv,sh);
+}
+function cbTile(lv,sh){setS('copybot',lv.armed?`<span class="up">● LIVE</span> ${lv.equity!=null?money(lv.equity):''}`:`Shadow ${money(sh.equity)}`);}
+async function cbPost(u,b){const r=await fetch(API+u,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(b||{})});const j=await r.json().catch(()=>({}));if(!r.ok)throw new Error(j.detail||('HTTP '+r.status));return j;}
+async function cbTest(){toast('Checking venues (read-only)…');try{const r=await cbPost('/api/copy/live/test');const msg=Object.entries(r).map(([v,x])=>`${v}: ${x.ok?'OK '+money(x.balance.equity):x.error}`).join(' · ');toast(msg,Object.values(r).some(x=>x.ok)?'ok':'err');}catch(e){toast(e.message,'err');}loadCB();}
+async function cbSave(){try{await cbPost('/api/copy/live/settings',{capital_cap:+document.getElementById('cbCap').value,max_leverage:+document.getElementById('cbLev').value,daily_loss_pct:+document.getElementById('cbDL').value,venues:[...document.querySelectorAll('.cbVen:checked')].map(x=>x.value)});toast('Settings saved');}catch(e){toast(e.message,'err');}loadCB();}
+async function cbArm(){const cf=document.getElementById('cbConfirm').value,ov=(document.getElementById('cbOverride')||{}).value||'';
+ if(!confirm('Arm LIVE trading with real money? The bot will place orders on your venue accounts every 30 minutes, within the cap, leverage and daily stop shown.'))return;
+ try{await cbPost('/api/copy/live/arm',{confirm:cf,override:ov});toast('LIVE trading armed');}catch(e){toast(e.message,'err');}loadCB();}
+async function cbDisarm(){try{await cbPost('/api/copy/live/disarm');toast('Disarmed — positions left open');}catch(e){toast(e.message,'err');}loadCB();}
+async function cbKill(){if(!confirm('KILL SWITCH: cancel all orders and close every CopyBot position on Kalshi and Coinbase, then disarm?'))return;
+ try{const r=await cbPost('/api/copy/live/kill');const bad=(r.results||[]).filter(x=>x.error);toast(bad.length?`Disarmed; ${bad.length} close(s) failed — check the venue`:'Flat and disarmed',bad.length?'err':'ok');}catch(e){toast(e.message,'err');}loadCB();}
+async function cbResetShadow(){if(!confirm('Restart the US shadow book? Its history is archived, not deleted.'))return;await cbPost('/api/copy/live/reset-shadow');loadCB();}
+setTimeout(async()=>{try{const L=await (await fetch(API+'/api/copy/live/summary')).json();cbTile(L.live,L.shadow);}catch(e){}},4000);
+
+/* ── FBF RADIO mini-player (keeps playing across every panel) ── */
+const RADIO={pl:[],id:null,tracks:[],i:-1,vol:0.7,shuffle:false,loaded:false};
+const rAudio=new Audio();rAudio.preload='none';
+const rLS={get(k){try{return localStorage.getItem('fbfRadio.'+k)}catch(e){return null}},set(k,v){try{localStorage.setItem('fbfRadio.'+k,v)}catch(e){}}};
+const rFmt=s=>{s=Math.max(0,Math.floor(s||0));return Math.floor(s/60)+':'+String(s%60).padStart(2,'0');};
+function radioToggle(force){const p=document.getElementById('radioPop');const open=force===undefined?!p.classList.contains('open'):force;p.classList.toggle('open',open);if(open)radioInit();}
+async function radioInit(){if(RADIO.loaded)return;RADIO.loaded=true;
+ RADIO.vol=+(rLS.get('vol')||0.7);RADIO.shuffle=rLS.get('shuffle')==='1';document.getElementById('rpVol').value=RADIO.vol;document.getElementById('rpShuf').classList.toggle('on',RADIO.shuffle);
+ try{RADIO.pl=await (await fetch(API+'/api/radio/playlists')).json();}catch(e){RADIO.pl=[{id:'radio',title:'FBF Radio'},{id:'workout',title:'FBF Workout Mix'},{id:'gamecock',title:'Gamecock Country'}];}
+ const sel=document.getElementById('rpList');sel.innerHTML=RADIO.pl.map(p=>`<option value="${p.id}">${p.title}${p.count?` (${p.count})`:''}</option>`).join('');
+ const last=rLS.get('pl');const start=RADIO.pl.find(p=>p.id===last)?last:'workout';sel.value=RADIO.pl.find(p=>p.id===start)?start:RADIO.pl[0].id;await radioLoad(sel.value,false);}
+async function radioLoad(id,autoplay){RADIO.id=id;rLS.set('pl',id);document.getElementById('rpTitle').textContent='Loading…';
+ try{const d=await (await fetch(API+'/api/radio/tracks?playlist='+encodeURIComponent(id))).json();RADIO.tracks=d.tracks||[];}catch(e){RADIO.tracks=[];}
+ document.getElementById('rpTracks').innerHTML=RADIO.tracks.map((t,i)=>`<div data-i="${i}" onclick="radioPlay(${i})" title="${t.title.replace(/"/g,'&quot;')}">${id==='radio'?'':(i+1)+'. '}${t.title}</div>`).join('')||'<div style="color:#6f6855">Nothing here yet.</div>';
+ RADIO.i=-1;document.getElementById('rpTitle').textContent=RADIO.tracks.length?'Press play':'Nothing in this playlist yet';document.getElementById('rpSub').textContent=RADIO.pl.find(p=>p.id===id)?.title||'';
+ if(autoplay&&RADIO.tracks.length)radioPlay(RADIO.shuffle&&id!=='radio'?Math.floor(Math.random()*RADIO.tracks.length):0);}
+function radioPlay(i){const t=RADIO.tracks[i];if(!t)return;RADIO.i=i;rAudio.src=t.audio;rAudio.play().catch(()=>{});
+ document.getElementById('rpTitle').textContent=t.title;document.getElementById('rpSub').textContent=(RADIO.pl.find(p=>p.id===RADIO.id)?.title||'')+(t.artist&&RADIO.id==='radio'?'':' · '+t.artist);
+ const cv=document.getElementById('rpCover');cv.src=t.cover||'/static/athena-180.png';
+ document.querySelectorAll('#rpTracks div').forEach(d=>d.classList.toggle('cur',+d.dataset.i===i));
+ const cur=document.querySelector('#rpTracks div.cur');if(cur)cur.scrollIntoView({block:'nearest'});
+ if('mediaSession' in navigator){navigator.mediaSession.metadata=new MediaMetadata({title:t.title,artist:t.artist||'Forged by Freedom',album:RADIO.pl.find(p=>p.id===RADIO.id)?.title||'FBF',artwork:t.cover?[{src:t.cover,sizes:'512x512'}]:[]});
+  navigator.mediaSession.setActionHandler('nexttrack',()=>radioStep(1));navigator.mediaSession.setActionHandler('previoustrack',()=>radioStep(-1));}}
+function radioPlayPause(){if(!RADIO.loaded){radioInit().then(()=>radioPlayPause());return;}
+ if(RADIO.i<0){radioPlay(RADIO.shuffle&&RADIO.id!=='radio'?Math.floor(Math.random()*RADIO.tracks.length):0);return;}
+ rAudio.paused?rAudio.play().catch(()=>{}):rAudio.pause();}
+function radioStep(d){const n=RADIO.tracks.length;if(!n)return;let i=RADIO.shuffle&&RADIO.id!=='radio'?Math.floor(Math.random()*n):(RADIO.i+d+n)%n;if(n>1&&i===RADIO.i)i=(i+1)%n;radioPlay(i);}
+function radioShuffle(){RADIO.shuffle=!RADIO.shuffle;rLS.set('shuffle',RADIO.shuffle?'1':'0');document.getElementById('rpShuf').classList.toggle('on',RADIO.shuffle);}
+function radioVol(v){RADIO.vol=+v;rLS.set('vol',v);}
+function radioSeek(e){if(!rAudio.duration)return;const r=e.currentTarget.getBoundingClientRect();rAudio.currentTime=(e.clientX-r.left)/r.width*rAudio.duration;}
+rAudio.addEventListener('ended',()=>radioStep(1));
+rAudio.addEventListener('timeupdate',()=>{document.getElementById('rpFill').style.width=(rAudio.duration?rAudio.currentTime/rAudio.duration*100:0)+'%';document.getElementById('rpCur').textContent=rFmt(rAudio.currentTime);document.getElementById('rpDur').textContent=rFmt(rAudio.duration);});
+const rState=()=>{const on=!rAudio.paused;document.getElementById('rpPlay').textContent=on?'❚❚':'▶';document.getElementById('radioFab').classList.toggle('playing',on);
+ const ib=document.getElementById('radioBtnInline');if(ib){ib.classList.toggle('on',on);ib.textContent=on?'📻 On':'📻 Radio';}
+ document.getElementById('radioFabTxt').textContent=on&&RADIO.tracks[RADIO.i]?RADIO.tracks[RADIO.i].title.slice(0,22):'FBF RADIO';};
+rAudio.addEventListener('play',rState);rAudio.addEventListener('pause',rState);
+rAudio.addEventListener('error',()=>{if(RADIO.i>=0){toast('Track failed to load — skipping','err');setTimeout(()=>radioStep(1),800);}});
+// Duck the music while Athena is listening or talking so she can hear you.
+setInterval(()=>{const duck=(typeof talkOn!=='undefined'&&talkOn);const target=duck?RADIO.vol*0.12:RADIO.vol;rAudio.volume=Math.min(1,Math.max(0,rAudio.volume+(target-rAudio.volume)*0.5));},150);
 
 /* ── HUB: tile status ── */
 const setS=(k,h)=>{const el=document.querySelector(`.st[data-s="${k}"]`);if(el)el.innerHTML=h;};

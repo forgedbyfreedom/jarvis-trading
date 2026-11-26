@@ -239,7 +239,7 @@ def _gpu_job_running() -> bool:
         out = subprocess.run(["powershell", "-NoProfile", "-Command",
                               "Get-CimInstance Win32_Process -Filter \"Name like 'python%'\" | % CommandLine"],
                              capture_output=True, text=True, timeout=20, creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0)).stdout
-        return "render_episode" in out
+        return "render_episode" in out or "make_songs" in out
     except Exception:
         return False
 
