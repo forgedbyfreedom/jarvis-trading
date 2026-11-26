@@ -577,6 +577,58 @@ def api_copy_live_reset_shadow():
     return {"status": "reset"}
 
 
+# ── Intel · Research Toolkit (OpenOSINT, OnionSearch, Crucix, link library) ──
+import osint_tools
+
+
+class ReconQ(BaseModel):
+    kind: str
+    target: str
+
+
+class OnionQ(BaseModel):
+    query: str
+    limit: int = 2
+
+
+@app.get("/api/intel/osint/inventory")
+def osint_inventory():
+    return osint_tools.inventory()
+
+
+@app.post("/api/intel/osint/recon")
+def osint_recon(q: ReconQ):
+    try:
+        return osint_tools.recon(q.kind, q.target)
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+
+
+@app.post("/api/intel/osint/onion")
+def osint_onion(q: OnionQ):
+    try:
+        return osint_tools.onion(q.query, q.limit)
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+
+
+@app.get("/api/intel/osint/library")
+def osint_library():
+    return osint_tools.library()
+
+
+@app.post("/api/intel/osint/crucix/{action}")
+def osint_crucix(action: str):
+    try:
+        if action == "start":
+            return osint_tools.crucix_start()
+        if action == "stop":
+            return osint_tools.crucix_stop()
+        return osint_tools.crucix_status()
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+
+
 # ── FBF Radio / music mini-player feeds (proxied so the browser has no CORS issues) ──
 @app.get("/api/radio/playlists")
 def api_radio_playlists():

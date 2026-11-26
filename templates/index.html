@@ -222,6 +222,10 @@ a{color:var(--cyan);text-decoration:none}
 .cb-field input[type=number],.cb-field input[type=text]{width:110px;background:#0a1222;border:1px solid var(--border);color:var(--text);border-radius:6px;padding:.35rem .5rem;font-family:var(--mono)}
 .cb-armed{padding:.25rem .7rem;border-radius:12px;font-size:.7rem;font-weight:800;letter-spacing:.08em}
 .cb-armed.on{background:rgba(0,255,136,.15);color:var(--green);animation:talkpulse 1.6s infinite}.cb-armed.off{background:rgba(255,255,255,.05);color:var(--dim)}
+.osin{background:#0a1222;border:1px solid var(--border);color:var(--text);border-radius:6px;padding:.45rem .6rem;font-size:.82rem}
+.osout{background:#060b16;border:1px solid var(--border);border-radius:8px;padding:.7rem;font-family:var(--mono);font-size:.72rem;max-height:380px;overflow:auto;white-space:pre-wrap;margin:0;color:#b9c6da}
+.libitem{padding:.35rem .5rem;border-bottom:1px solid rgba(255,255,255,.04)}.libitem a{color:var(--cyan);text-decoration:none;font-weight:600}
+.libcat{font-size:.65rem;color:var(--dim);margin-left:.4rem}
 .btn-kill{background:linear-gradient(90deg,#ff2244,#ff6a00);color:#fff;font-weight:800;letter-spacing:.06em}
 #athenaFab.on{animation:talkpulse 1.6s infinite}
 </style>
@@ -279,6 +283,7 @@ a{color:var(--cyan);text-decoration:none}
    <div class="tile" data-t="godseye"><span class="ic">🌍</span><span class="tt">God's Eye View</span><span class="st" data-s="godseye">Live 3D globe</span></div>
    <div class="tile hot" data-t="verify"><span class="ic">🛡️</span><span class="tt">Supplier &amp; Contact Check</span><span class="st">Spot fakes &amp; counterfeits</span></div>
    <div class="tile" data-t="trends"><span class="ic">📊</span><span class="tt">Peptide Trends</span><span class="st" data-s="trends">World interest</span></div>
+   <div class="tile" data-t="osint"><span class="ic">🛰️</span><span class="tt">Research Toolkit</span><span class="st" data-s="osint">Recon · dark web · Crucix</span></div>
   </div>
  </div>
  <div class="dock-sec" style="--acc:212,169,58">
@@ -516,6 +521,37 @@ a{color:var(--cyan);text-decoration:none}
   <div id="rgList"></div></div>
 </div></div></div></div>
 
+<div id="p-osint" style="display:none">
+<div class="pgrid">
+ <div class="panel"><div class="phead"><h3>Domain &amp; infrastructure recon · OpenOSINT</h3></div><div class="pbody">
+  <div style="display:flex;gap:.5rem;flex-wrap:wrap;margin-bottom:.6rem">
+   <select id="osKind" class="osin" style="flex:1;min-width:170px"></select>
+   <input id="osTarget" class="osin" style="flex:2;min-width:180px" placeholder="example.com" onkeydown="if(event.key==='Enter')osRecon()">
+   <button class="btn btn-green" onclick="osRecon()">Run</button>
+  </div>
+  <div style="font-size:.72rem;color:var(--dim);margin-bottom:.5rem">Passive checks on websites, suppliers, domains and IPs. "Exposure" also connects to the site on port 443.</div>
+  <pre id="osOut" class="osout">Pick a check and a target.</pre>
+ </div></div>
+ <div class="panel"><div class="phead"><h3>Dark-web keyword search · OnionSearch</h3><span id="osTor"></span></div><div class="pbody">
+  <div style="display:flex;gap:.5rem;margin-bottom:.6rem">
+   <input id="onQ" class="osin" style="flex:1" placeholder="e.g. forged by freedom, BPC-157 vendor name" onkeydown="if(event.key==='Enter')osOnion()">
+   <button class="btn btn-green" onclick="osOnion()">Search</button>
+  </div>
+  <div style="font-size:.72rem;color:var(--dim);margin-bottom:.5rem">Needs Tor running: open Tor Browser first. Results are links only. Open them in Tor Browser, not here. Takes 1–4 minutes.</div>
+  <div id="onOut" class="osout" style="white-space:normal">No search yet.</div>
+ </div></div>
+</div>
+<div class="panel full" style="margin-bottom:1rem"><div class="phead"><h3>Crucix · world intel dashboard (27 public feeds)</h3><span id="crStat"></span></div><div class="pbody" style="display:flex;gap:.6rem;align-items:center;flex-wrap:wrap">
+ <button class="btn btn-green" onclick="osCrucix('start')">Start &amp; open</button><button class="btn btn-ghost" onclick="osCrucix('stop')">Stop</button>
+ <span style="font-size:.75rem;color:var(--dim)">Runs locally on port 3117: conflicts, markets, energy, shipping, disasters. Free API keys (FRED, NASA FIRMS, EIA…) can go in its <code>.env</code> to unlock more sources.</span>
+</div></div>
+<div class="panel full"><div class="phead"><h3>OSINT link library</h3><span id="libCount" style="font-size:.75rem;color:var(--dim)"></span></div><div class="pbody">
+ <input id="libQ" class="osin" style="width:100%;margin-bottom:.6rem" placeholder="Filter by name, category or description…" oninput="osLibRender()">
+ <div id="libOut" style="max-height:420px;overflow-y:auto;font-size:.78rem"></div>
+ <div id="osInv" style="font-size:.7rem;color:var(--dim);margin-top:.8rem"></div>
+</div></div>
+</div>
+
 <div id="p-trends" style="display:none">
 <div class="panel full"><div class="phead"><h3>Peptide Trends — worldwide</h3>
 <div style="display:flex;gap:8px"><input id="trTerms" style="min-width:320px;background:#0a1222;border:1px solid var(--border);color:#e6edf7;border-radius:6px;padding:.4rem .6rem" placeholder="retatrutide, BPC-157, … (blank = default list)"><button class="btn btn-go" onclick="loadTrends(true)">Refresh</button></div></div>
@@ -562,9 +598,9 @@ FBFNeural.mount(document.getElementById('heroCanvas'),{brainUrl:'/static/brain.b
 /* ═══ DASHBOARD ENGINE ═══ */
 const API='';
 setInterval(()=>{document.getElementById('clk').textContent=new Date().toLocaleTimeString();},1000);
-const tabs=['dashboard','stocks','crypto','dryrun','copybot','autotrade','advisory','signals','portfolio','backtest','audit','coach','peptides','sports','godseye','verify','trends','clients'];
+const tabs=['dashboard','stocks','crypto','dryrun','copybot','autotrade','advisory','signals','portfolio','backtest','audit','coach','peptides','sports','godseye','verify','trends','osint','clients'];
 const loaders={dashboard:()=>loadDash(),stocks:()=>loadMarket('stock'),crypto:()=>loadMarket('crypto'),dryrun:()=>loadDry(),copybot:()=>loadCB(),autotrade:()=>loadAT(),
- advisory:()=>loadAdvisory(),signals:()=>loadScan(),portfolio:()=>loadPF(),audit:()=>loadAudit(),coach:()=>openCoach(),peptides:()=>loadPeptides(false),sports:()=>openSports(),godseye:()=>openGodsEye(),verify:()=>rgLoad(),trends:()=>loadTrends(false),clients:()=>fcLoad()};
+ advisory:()=>loadAdvisory(),signals:()=>loadScan(),portfolio:()=>loadPF(),audit:()=>loadAudit(),coach:()=>openCoach(),peptides:()=>loadPeptides(false),sports:()=>openSports(),godseye:()=>openGodsEye(),verify:()=>rgLoad(),osint:()=>loadOsint(),trends:()=>loadTrends(false),clients:()=>fcLoad()};
 function showTab(t){
  document.querySelectorAll('.tile[data-t]').forEach(x=>x.classList.toggle('on',x.dataset.t===t));
  tabs.forEach(id=>{const el=document.getElementById('p-'+id);if(el)el.style.display=id===t?'block':'none';});
@@ -875,6 +911,33 @@ async function resetCopy(){if(!confirm('Reset the CopyBot simulation?'))return;a
 async function runCopy(){await fetch(API+'/api/copy/run',{method:'POST'});toast('CopyBot cycle started (takes ~1 min)');setTimeout(loadDry,60000);}
 
 
+
+/* ── Intel · Research Toolkit ── */
+let OSLIB=[],OSINV=null;
+async function loadOsint(){
+ try{OSINV=await (await fetch(API+'/api/intel/osint/inventory')).json();}catch(e){return;}
+ const k=document.getElementById('osKind');if(!k.options.length)k.innerHTML=Object.entries(OSINV.recon_checks).map(([v,l])=>`<option value="${v}">${l}</option>`).join('');
+ document.getElementById('osTor').innerHTML=OSINV.tor_port?`<span style="color:var(--green);font-size:.72rem">● Tor on :${OSINV.tor_port}</span>`:'<span style="color:var(--amber);font-size:.72rem">Tor not running</span>';
+ osCrStat(OSINV.crucix);
+ document.getElementById('osInv').innerHTML=`Tools folder: <code>${OSINV.root}</code>. Wired here: ${Object.entries(OSINV.wired).filter(x=>x[1]).map(x=>x[0]).join(', ')}.`+(OSINV.not_wired.length?` Installed but not wired into the dashboard (person lookups): ${OSINV.not_wired.join(', ')}.`:'');
+ if(!OSLIB.length){try{OSLIB=await (await fetch(API+'/api/intel/osint/library')).json();}catch(e){}osLibRender();}
+}
+function osCrStat(c){document.getElementById('crStat').innerHTML=c.running?`<a href="${c.url}" target="_blank" style="color:var(--green);font-size:.75rem">● running: open ↗</a>`:`<span style="font-size:.75rem;color:var(--dim)">${c.installed?'stopped':'not installed'}</span>`;}
+async function osRecon(){const kind=document.getElementById('osKind').value,target=document.getElementById('osTarget').value.trim(),o=document.getElementById('osOut');
+ if(!target)return;o.textContent='Running '+kind+' on '+target+'…';
+ try{const r=await fetch(API+'/api/intel/osint/recon',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({kind,target})});const j=await r.json();
+  if(!r.ok){o.textContent='✗ '+(j.detail||r.status);return;}
+  o.textContent=`${j.label} · ${j.target}\n\n`+(j.results.join('\n')||'(no results)')+(j.error?`\n\n✗ ${j.error}`:'');}catch(e){o.textContent='✗ '+e.message;}}
+async function osOnion(){const q=document.getElementById('onQ').value.trim(),o=document.getElementById('onOut');if(!q)return;o.textContent='Searching onion engines for "'+q+'"… (1–4 min)';
+ try{const r=await fetch(API+'/api/intel/osint/onion',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({query:q,limit:2})});const j=await r.json();
+  if(!r.ok){o.textContent='✗ '+(j.detail||r.status);return;}
+  const esc=t=>String(t).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+  o.innerHTML=`<div style="margin-bottom:.4rem;color:var(--dim)">${j.count} unique links</div>`+(j.results.map(x=>`<div class="libitem">${esc(x.name)}<span class="libcat">${esc(x.engine)}</span><br><span style="user-select:all;color:var(--cyan)">${esc(x.link)}</span></div>`).join('')||esc(j.note||'No results'));}catch(e){o.textContent='✗ '+e.message;}}
+async function osCrucix(a){try{const r=await fetch(API+'/api/intel/osint/crucix/'+a,{method:'POST'});const j=await r.json();if(!r.ok){toast(j.detail||'Failed','err');return;}osCrStat(j);if(a==='start'&&j.running)window.open(j.url,'_blank');}catch(e){toast(e.message,'err');}}
+function osLibRender(){const q=(document.getElementById('libQ').value||'').toLowerCase();const esc=t=>String(t).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+ const hits=OSLIB.filter(x=>!q||(x.name+' '+x.category+' '+x.desc).toLowerCase().includes(q));
+ document.getElementById('libCount').textContent=`${hits.length} of ${OSLIB.length} tools & sites`;
+ document.getElementById('libOut').innerHTML=hits.slice(0,400).map(x=>x.onion?`<div class="libitem"><b>${esc(x.name)}</b><span class="libcat">${esc(x.category)} · .onion (Tor Browser only)</span><div style="color:var(--dim);user-select:all">${esc(x.url)}</div></div>`:`<div class="libitem"><a href="${esc(x.url)}" target="_blank" rel="noopener noreferrer">${esc(x.name)}</a><span class="libcat">${esc(x.category)}</span>${x.desc?`<div style="color:var(--dim)">${esc(x.desc)}</div>`:''}</div>`).join('')+(hits.length>400?'<div style="color:var(--dim);padding:.4rem">Showing 400 — narrow the filter.</div>':'');}
 /* ── COPYBOT LIVE (US venues) ── */
 function cbSpark(series,w=760,h=120){
  // Plot % return from each book's own start so books of different sizes compare fairly.
